@@ -1,4 +1,3 @@
-
 PROJECT = emqttd_auth_ldap
 PROJECT_DESCRIPTION = Authentication/ACL with LDAP
 PROJECT_VERSION = 2.0
@@ -6,7 +5,7 @@ PROJECT_VERSION = 2.0
 LOCAL_DEPS = eldap
 
 BUILD_DEPS = emqttd
-dep_emqttd = git https://github.com/emqtt/emqttd gen_conf
+dep_emqttd = git https://github.com/emqtt/emqttd emq20
 
 ERLC_OPTS += +'{parse_transform, lager_transform}'
 

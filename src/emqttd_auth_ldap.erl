@@ -72,7 +72,7 @@ ldap_bind(LDAP, UserDn, Password) ->
     end.
 
 fill(Username, UserDn) ->
-    re:replace(UserDn, "\\$u", Username, [global, {return, list}]).
+    re:replace(UserDn, "%u", Username, [global, {return, list}]).
 
 description() -> "LDAP Authentication Plugin".
 

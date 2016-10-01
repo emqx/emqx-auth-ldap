@@ -32,10 +32,12 @@
 
 start(_StartType, _StartArgs) ->
     gen_conf:init(?APP),
-    emqttd_access_control:register_mod(auth, ?APP, gen_conf:value(?APP, ldap)),
+    {ok, LdapOpts} = gen_conf:value(?APP, ldap),
+    emqttd_access_control:register_mod(auth, ?APP, LdapOpts),
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 stop(_State) ->
+    emqttd_access_control:unregister_mod(auth, ?APP),
     ok.
 
 %%--------------------------------------------------------------------
