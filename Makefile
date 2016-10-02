@@ -1,4 +1,3 @@
-
 PROJECT = emqttd_auth_ldap
 PROJECT_DESCRIPTION = Authentication/ACL with LDAP
 PROJECT_VERSION = 2.0
