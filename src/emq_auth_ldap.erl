@@ -14,7 +14,7 @@
 %% limitations under the License.
 %%--------------------------------------------------------------------
 
--module(emqttd_auth_ldap).
+-module(emq_auth_ldap).
 
 -author("Feng Lee <feng@emqtt.io>").
 
