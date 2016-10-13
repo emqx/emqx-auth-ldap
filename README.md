@@ -45,6 +45,11 @@ Load the Plugin
 ./bin/emqttd_ctl plugins load emq_auth_ldap
 ```
 
+TODO
+----
+
+Support SSL Options
+
 License
 -------
 
