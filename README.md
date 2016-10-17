@@ -2,7 +2,7 @@
 emq_auth_ldap
 =============
 
-LDAP Authentication Plugin for EMQ 3.0
+LDAP Authentication Plugin for the EMQ Broker
 
 Build
 -----
