@@ -17,7 +17,7 @@ Configuration
 File: etc/emq_auth_ldap.conf
 
 ```
-auth.ldap.servers = localhost
+auth.ldap.servers = 127.0.0.1
 
 auth.ldap.port = 389
 
@@ -27,15 +27,18 @@ auth.ldap.user_dn = uid=%u,ou=People,dc=example,dc=com
 
 auth.ldap.ssl = false
 
-auth.ldap.ssl.certfile = etc/ssl/cert.pem
+## TODO: SSL Support
 
-#auth.ldap.ssl.keyfile = etc/ssl/key.pem
+#auth.ldap.ssl.certfile = etc/certs/cert.pem
 
-#auth.ldap.ssl.cacertfile = etc/ssl/cacert.pem
+#auth.ldap.ssl.keyfile = etc/certs/key.pem
 
-auth.ldap.ssl.verify = verify_peer
+#auth.ldap.ssl.cacertfile = etc/certs/cacert.pem
 
-auth.ldap.ssl.fail_if_no_peer_cert = true
+#auth.ldap.ssl.verify = verify_peer
+
+#auth.ldap.ssl.fail_if_no_peer_cert = true
+
 ```
 
 Load the Plugin
