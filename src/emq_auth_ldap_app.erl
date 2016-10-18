@@ -14,7 +14,7 @@
 %% limitations under the License.
 %%--------------------------------------------------------------------
 
--module(emqttd_auth_ldap_app).
+-module(emq_auth_ldap_app).
 
 -behaviour(application).
 
@@ -24,15 +24,14 @@
 %% Supervisor callbacks
 -export([init/1]).
 
--define(APP, emqttd_auth_ldap).
+-define(APP, emq_auth_ldap).
 
 %%--------------------------------------------------------------------
 %% Application callbacks
 %%--------------------------------------------------------------------
 
 start(_StartType, _StartArgs) ->
-    gen_conf:init(?APP),
-    {ok, LdapOpts} = gen_conf:value(?APP, ldap),
+    {ok, LdapOpts} = application:get_env(?APP, ldap),
     emqttd_access_control:register_mod(auth, ?APP, LdapOpts),
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 

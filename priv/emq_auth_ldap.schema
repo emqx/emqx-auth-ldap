@@ -1,0 +1,61 @@
+%%-*- mode: erlang -*-
+%% emq_auth_ldap config mapping
+{mapping, "auth.ldap.servers", "emq_auth_ldap.ldap", [
+  {default, "127.0.0.1"},
+  {datatype, string}
+]}.
+
+{mapping, "auth.ldap.port", "emq_auth_ldap.ldap", [
+  {default, 389},
+  {datatype, integer}
+]}.
+
+{mapping, "auth.ldap.timeout", "emq_auth_ldap.ldap", [
+  {default, 30},
+  {datatype, integer}
+]}.
+
+{mapping, "auth.ldap.user_dn", "emq_auth_ldap.ldap", [
+  {datatype, string}
+]}.
+
+{mapping, "auth.ldap.ssl", "emq_auth_ldap.ldap", [
+  {default, false},
+  {datatype, {enum, [true, false]}}
+]}.
+
+{mapping, "auth.ldap.ssl.certfile", "emq_auth_ldap.ldap", [
+  {datatype, string}
+]}.
+
+{mapping, "auth.ldap.ssl.keyfile ", "emq_auth_ldap.ldap", [
+  {datatype, string}
+]}.
+
+{mapping, "auth.ldap.ssl.cacertfile ", "emq_auth_ldap.ldap", [
+  {datatype, string}
+]}.
+
+{mapping, "auth.ldap.ssl.verify", "emq_auth_ldap.ldap", [
+  {default, verify_peer},
+  {datatype, atom}
+]}.
+
+{mapping, "auth.ldap.ssl.fail_if_no_peer_cert", "emq_auth_ldap.ldap", [
+  {default, true},
+  {datatype, {enum, [true, false]}}
+]}.
+
+%% TODO: ssl options...
+{translation, "emq_auth_ldap.ldap", fun(Conf) ->
+    Servers = string:tokens(cuttlefish:conf_get("auth.ldap.servers", Conf), ","),
+    Port = cuttlefish:conf_get("auth.ldap.port", Conf),
+    Timeout = cuttlefish:conf_get("auth.ldap.timeout", Conf),
+    Userdn = cuttlefish:conf_get("auth.ldap.user_dn", Conf),
+    Opts = [{servers, Servers}, {port, Port}, {timeout, Timeout}, {user_dn, Userdn}],
+    case cuttlefish:conf_get("auth.ldap.ssl", Conf) of
+        true  -> [{ssl, true}|Opts];
+        false -> [{ssl, false}|Opts]
+    end
+end}.
+
