@@ -64,7 +64,7 @@ ldap_bind(LDAP, UserDn, Password) ->
         ok ->
             ok;
         {error, invalidCredentials} ->
-            {error, invalid_credentials};
+            ignore;
         {error, Error} ->
             {error, Error};
         {'EXIT', Reason} ->
