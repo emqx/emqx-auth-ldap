@@ -1,6 +1,6 @@
 PROJECT = emq_auth_ldap
 PROJECT_DESCRIPTION = Authentication/ACL with LDAP
-PROJECT_VERSION = 2.1.2
+PROJECT_VERSION = 2.2
 
 LOCAL_DEPS = eldap
 
