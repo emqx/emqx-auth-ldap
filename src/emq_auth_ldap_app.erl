@@ -19,29 +19,39 @@
 -behaviour(application).
 
 %% Application callbacks
--export([start/2, stop/1]).
+-export([start/2, prep_stop/1, stop/1]).
 
-%% Supervisor callbacks
--export([init/1]).
-
--define(APP, emq_auth_ldap).
+-include("emq_auth_ldap.hrl").
 
 %%--------------------------------------------------------------------
 %% Application callbacks
 %%--------------------------------------------------------------------
 
 start(_StartType, _StartArgs) ->
-    {ok, LdapOpts} = application:get_env(?APP, ldap),
-    emqttd_access_control:register_mod(auth, ?APP, LdapOpts),
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    {ok, Sup} = emq_auth_ldap_sup:start_link(),
+    if_enabled(auth_dn, fun reg_authmod/1),
+    {ok, Sup}.
+
+prep_stop(State) ->
+    emqttd_access_control:unregister_mod(auth, emq_auth_ldap),
+    State.
 
 stop(_State) ->
-    emqttd_access_control:unregister_mod(auth, ?APP),
     ok.
 
+reg_authmod(AuthDn) ->
+    {ok, HashType} = application:get_env(?APP, password_hash),
+    AuthEnv = {AuthDn, HashType},
+    emqttd_access_control:register_mod(auth, emq_auth_ldap, AuthEnv).
+
+
 %%--------------------------------------------------------------------
-%% Supervisor callbacks
+%% Internal function
 %%--------------------------------------------------------------------
 
-init([]) -> {ok, { {one_for_one, 5, 10}, []} }.
+if_enabled(Cfg, Fun) ->
+    case application:get_env(?APP, Cfg) of
+        {ok, Dn} -> Fun(Dn);
+        undefined   -> ok
+    end.
 
