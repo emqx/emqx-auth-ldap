@@ -20,7 +20,7 @@
   {default, "public"}
 ]}.
 
-{mapping, "auth.ldap.timeout", "emqx_auth_ldap.ldap", [
+{mapping, "auth.ldap.timeout", "emq_auth_ldap.ldap", [
   {default, 30},
   {datatype, integer}
 ]}.

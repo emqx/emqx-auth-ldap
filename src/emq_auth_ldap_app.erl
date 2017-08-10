@@ -30,10 +30,12 @@
 start(_StartType, _StartArgs) ->
     {ok, Sup} = emq_auth_ldap_sup:start_link(),
     if_enabled(auth_dn, fun reg_authmod/1),
+    emq_auth_ldap_config:register(),
     {ok, Sup}.
 
 prep_stop(State) ->
     emqttd_access_control:unregister_mod(auth, emq_auth_ldap),
+    emq_auth_ldap_config:unregister(),
     State.
 
 stop(_State) ->
