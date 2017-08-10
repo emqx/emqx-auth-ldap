@@ -2,6 +2,10 @@ PROJECT = emq_auth_ldap
 PROJECT_DESCRIPTION = Authentication/ACL with LDAP
 PROJECT_VERSION = 2.3
 
+DEPS = clique
+
+dep_clique  = git https://github.com/turtleDeng/clique
+
 LOCAL_DEPS = eldap
 
 BUILD_DEPS = emqttd cuttlefish
