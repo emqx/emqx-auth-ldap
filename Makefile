@@ -4,7 +4,7 @@ PROJECT_VERSION = 2.3
 
 DEPS = ecpool clique
 dep_ecpool = git https://github.com/emqtt/ecpool master
-dep_clique  = git https://github.com/turtleDeng/clique
+dep_clique  = git https://github.com/emqtt/clique
 
 LOCAL_DEPS = eldap
 
