@@ -45,7 +45,9 @@ check(Client, Password, #state{auth_dn = AuthDn, hash_type = HashType}) ->
             ignore;
         {ok, #eldap_search_result{entries = [Entry]}} ->
             Attributes = Entry#eldap_entry.attributes,
-            check_pass(list_to_binary(proplists:get_value("password", Attributes)), Password, HashType)
+            check_pass(list_to_binary(proplists:get_value("password", Attributes)), Password, HashType);
+        {error, Reason} ->
+            {error, Reason}
     end.
 
 check_pass(PassHash, Password, HashType) ->
