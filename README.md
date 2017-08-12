@@ -23,7 +23,9 @@ auth.ldap.port = 389
 
 auth.ldap.timeout = 30
 
-auth.ldap.user_dn = uid=%u,ou=People,dc=example,dc=com
+auth.ldap.bind_dn = cn=root,dc=emqtt,dc=com
+
+auth.ldap.bind_password = public
 
 auth.ldap.ssl = false
 
@@ -39,13 +41,47 @@ auth.ldap.ssl = false
 
 #auth.ldap.ssl.fail_if_no_peer_cert = true
 
+## Variables: %u = username, %c = clientid
+auth.ldap.auth_dn = cn=%u,ou=auth,dc=emqtt,dc=com
+
+## Password hash: plain, md5, sha, sha256
+auth.ldap.password_hash = sha256
+
 ```
 
 Load the Plugin
 ---------------
 
 ```
-./bin/emqttd_ctl plugins load emq_auth_ldap
+./bin/emq_ctl plugins load emq_auth_ldap
+```
+Configuration Open LDAP
+-----------------------
+
+vim /etc/openldap/slapd.conf
+
+```
+database bdb
+suffix   "dc=emqtt,dc=com"
+rootdn   "cn=root,dc=emqtt,dc=com"
+rootpw   {SSHA}xvvgeQvLGZzHrCzFTfAOkL1gkHQrJX59
+
+```
+
+
+Include Emqtt Schema
+--------------------
+
+vim /etc/openldap/slapd.conf
+```
+include emqtt.schema
+```
+
+Create Emqtt User Data
+----------------------
+
+```
+# ldapadd -x -D "cn=root,dc=emqtt,dc=com" -w public -f emqtt.com.ldif
 ```
 
 TODO

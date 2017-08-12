@@ -18,61 +18,45 @@
 
 -author("Feng Lee <feng@emqtt.io>").
 
--behaviour(emqttd_auth_mod).
+-include_lib("eldap/include/eldap.hrl").
 
 -include_lib("emqttd/include/emqttd.hrl").
 
 -import(proplists, [get_value/2, get_value/3]).
 
+-import(emq_auth_ldap_cli, [search/2, fill/2, gen_filter/2]).
+
 -export([init/1, check/3, description/0]).
 
--record(state, {servers, user_dn, options}).
+-record(state, {auth_dn, hash_type}).
 
-init(Opts) ->
-    Servers = get_value(servers, Opts, ["localhost"]),
-    Port    = get_value(port, Opts, 389),
-    Timeout = get_value(timeout, Opts, 30),
-    UserDn  = get_value(user_dn, Opts),
-    LdapOpts =
-    case get_value(ssl, Opts, false) of
-        true -> 
-            SslOpts = get_value(sslopts, Opts),
-            [{port, Port}, {timeout, Timeout}, {sslopts, SslOpts}];
-        false ->
-            [{port, Port}, {timeout, Timeout}]
-    end,
-    {ok, #state{servers = Servers, user_dn = UserDn, options = LdapOpts}}.
+-define(EMPTY(Username), (Username =:= undefined orelse Username =:= <<>>)).
 
-check(#mqtt_client{username = undefined}, _Password, _State) ->
-    {error, username_undefined};
-check(_Client, undefined, _State) ->
-    {error, password_undefined};
-check(_Client, <<>>, _State) ->
-    {error, password_undefined};
-check(#mqtt_client{username = Username}, Password,
-      #state{servers = Servers, user_dn = UserDn, options = Options}) ->
-    case eldap:open(Servers, Options) of
-        {ok, LDAP} ->
-            UserDn1 = fill(binary_to_list(Username), UserDn),
-            ldap_bind(LDAP, UserDn1, binary_to_list(Password));
+init({AuthDn, HashType}) ->
+    {ok, #state{auth_dn = AuthDn, hash_type = HashType}}.
+
+check(#mqtt_client{username = Username}, Password, _State) when ?EMPTY(Username); ?EMPTY(Password) ->
+    {error, username_or_password_undefined};
+
+check(Client, Password, #state{auth_dn = AuthDn, hash_type = HashType}) ->
+    Filter = gen_filter(Client, AuthDn),
+    case search(fill(Client, AuthDn), Filter) of
+        {ok, #eldap_search_result{entries = []}} ->
+            ignore;
+        {ok, #eldap_search_result{entries = [Entry]}} ->
+            Attributes = Entry#eldap_entry.attributes,
+            check_pass(list_to_binary(proplists:get_value("password", Attributes)), Password, HashType);
         {error, Reason} ->
             {error, Reason}
     end.
 
-ldap_bind(LDAP, UserDn, Password) ->
-    case catch eldap:simple_bind(LDAP, UserDn, Password) of
-        ok ->
-            ok;
-        {error, invalidCredentials} ->
-            ignore;
-        {error, Error} ->
-            {error, Error};
-        {'EXIT', Reason} ->
-            {error, Reason}
-    end.
+check_pass(PassHash, Password, HashType) ->
+    check_pass(PassHash, hash(HashType, Password)).
 
-fill(Username, UserDn) ->
-    re:replace(UserDn, "%u", Username, [global, {return, list}]).
+check_pass(PassHash, PassHash) -> ok;
+check_pass(_, _)               -> {error, password_error}.
 
 description() -> "LDAP Authentication Plugin".
+
+hash(Type, Password) -> emqttd_auth_mod:passwd_hash(Type, Password).
 

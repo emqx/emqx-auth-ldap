@@ -2,6 +2,10 @@ PROJECT = emq_auth_ldap
 PROJECT_DESCRIPTION = Authentication/ACL with LDAP
 PROJECT_VERSION = 2.3
 
+DEPS = ecpool clique
+dep_ecpool = git https://github.com/emqtt/ecpool master
+dep_clique  = git https://github.com/emqtt/clique
+
 LOCAL_DEPS = eldap
 
 BUILD_DEPS = emqttd cuttlefish
@@ -12,6 +16,13 @@ NO_AUTOPATCH = cuttlefish
 
 ERLC_OPTS += +debug_info
 ERLC_OPTS += +'{parse_transform, lager_transform}'
+
+TEST_DEPS = emqttc emq_auth_username
+dep_emqttc = git https://github.com/emqtt/emqttc
+dep_emq_auth_username = git https://github.com/emqtt/emq-auth-username
+
+TEST_ERLC_OPTS += +debug_info
+TEST_ERLC_OPTS += +'{parse_transform, lager_transform}'
 
 COVER = true
 
