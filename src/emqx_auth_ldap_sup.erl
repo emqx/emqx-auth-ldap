@@ -14,11 +14,11 @@
 %% limitations under the License.
 %%--------------------------------------------------------------------
 
--module(emq_auth_ldap_sup).
+-module(emqx_auth_ldap_sup).
 
 -behaviour(supervisor).
 
--include("emq_auth_ldap.hrl").
+-include("emqx_auth_ldap.hrl").
 
 -export([start_link/0]).
 
@@ -31,6 +31,6 @@ start_link() ->
 init([]) ->
     %% ldap Connection Pool.
     {ok, Server} = application:get_env(?APP, ldap),
-    PoolSpec = ecpool:pool_spec(?APP, ?APP, emq_auth_ldap_cli, Server),
+    PoolSpec = ecpool:pool_spec(?APP, ?APP, emqx_auth_ldap_cli, Server),
     {ok, {{one_for_one, 10, 100}, [PoolSpec]}}.
 

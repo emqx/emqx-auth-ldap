@@ -13,11 +13,12 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%--------------------------------------------------------------------
--module (emq_auth_ldap_config).
 
--include("emq_auth_ldap.hrl").
+-module(emqx_auth_ldap_cfg).
 
--export ([register/0, unregister/0]).
+-include("emqx_auth_ldap.hrl").
+
+-export([register/0, unregister/0]).
 
 register() ->
     clique_config:load_schema([code:priv_dir(?APP)], ?APP),

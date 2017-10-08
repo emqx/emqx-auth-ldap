@@ -14,28 +14,30 @@
 %% limitations under the License.
 %%--------------------------------------------------------------------
 
--module(emq_auth_ldap_app).
+-module(emqx_auth_ldap_app).
 
 -behaviour(application).
 
 %% Application callbacks
 -export([start/2, prep_stop/1, stop/1]).
 
--include("emq_auth_ldap.hrl").
+-include("emqx_auth_ldap.hrl").
 
 %%--------------------------------------------------------------------
 %% Application callbacks
 %%--------------------------------------------------------------------
 
 start(_StartType, _StartArgs) ->
-    {ok, Sup} = emq_auth_ldap_sup:start_link(),
+    {ok, Sup} = emqx_auth_ldap_sup:start_link(),
     if_enabled(auth_dn, fun reg_authmod/1),
-    emq_auth_ldap_config:register(),
+    if_enabled(acl_dn,  fun reg_aclmod/1),
+    emqx_auth_ldap_cfg:register(),
     {ok, Sup}.
 
 prep_stop(State) ->
-    emqttd_access_control:unregister_mod(auth, emq_auth_ldap),
-    emq_auth_ldap_config:unregister(),
+    emqx_access_control:unregister_mod(auth, emqx_auth_ldap),
+    emqx_access_control:unregister_mod(acl, emqx_acl_ldap),
+    emqx_auth_ldap_cfg:unregister(),
     State.
 
 stop(_State) ->
@@ -44,8 +46,10 @@ stop(_State) ->
 reg_authmod(AuthDn) ->
     {ok, HashType} = application:get_env(?APP, password_hash),
     AuthEnv = {AuthDn, HashType},
-    emqttd_access_control:register_mod(auth, emq_auth_ldap, AuthEnv).
+    emqx_access_control:register_mod(auth, emqx_auth_ldap, AuthEnv).
 
+reg_aclmod(AclDn) ->
+    emqx_access_control:register_mod(acl, emqx_acl_ldap, AclDn).
 
 %%--------------------------------------------------------------------
 %% Internal function

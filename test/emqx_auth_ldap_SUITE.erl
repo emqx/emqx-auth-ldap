@@ -14,44 +14,42 @@
 %% limitations under the License.
 %%--------------------------------------------------------------------
 
--module(emq_auth_ldap_SUITE).
+-module(emqx_auth_ldap_SUITE).
 
 -compile(export_all).
 
--define(PID, emq_auth_ldap).
+-define(POOL, emqx_auth_ldap).
 
--define(APP, ?PID).
+-define(APP, ?POOL).
 
 -define(AuthDN, "ou=test_auth,dc=emqtt,dc=com").
 
--include_lib("emqttd/include/emqttd.hrl").
+-include_lib("emqx/include/emqx.hrl").
 
 -include_lib("eunit/include/eunit.hrl").
 
 -include_lib("common_test/include/ct.hrl").
 
 all() -> 
-    [{group, emq_auth_ldap_auth},
-     {group, emq_auth_ldap}].
+    [{group, emqx_auth_ldap_auth},
+     {group, emqx_auth_ldap}].
 
 groups() ->
-    [{emq_auth_ldap_auth, [sequence],
-     [check_auth, list_auth]},
-    {emq_auth_ldap, [sequence],
-     [comment_config]}
+    [{emqx_auth_ldap_auth, [sequence], [check_auth, list_auth]},
+     {emqx_auth_ldap, [sequence], [comment_config]}
     ].
 
 init_per_suite(Config) ->
-    [start_apps(App) || App <- [emqttd, emq_auth_ldap]],
-    {ok, Handle} = ecpool_worker:client(gproc_pool:pick_worker({ecpool, ?PID})),
+    [start_apps(App) || App <- [emqx, emqx_auth_ldap]],
+    {ok, Handle} = ecpool_worker:client(gproc_pool:pick_worker({ecpool, ?POOL})),
     cleanup(Handle),
     prepare(Handle),
     Config.
 
 end_per_suite(_Config) ->
-    {ok, Handle} = ecpool_worker:client(gproc_pool:pick_worker({ecpool, ?PID})),
+    {ok, Handle} = ecpool_worker:client(gproc_pool:pick_worker({ecpool, ?POOL})),
     cleanup(Handle),
-    [application:stop(App) || App <- [emq_auth_ldap, emqttd]].
+    [application:stop(App) || App <- [emqx_auth_ldap, emqx]].
 
 check_auth(_) ->
     Plain = #mqtt_client{client_id = <<"client1">>, username = <<"plain">>},
@@ -59,29 +57,29 @@ check_auth(_) ->
     Sha = #mqtt_client{client_id = <<"sha">>, username = <<"sha">>},
     Sha256 = #mqtt_client{client_id = <<"sha256">>, username = <<"sha256">>},
     reload([{password_hash, plain}]),
-    ok = emqttd_access_control:auth(Plain, <<"plain">>),
+    ok = emqx_access_control:auth(Plain, <<"plain">>),
     reload([{password_hash, md5}]),
-    ok  = emqttd_access_control:auth(Md5, <<"md5">>),
+    ok  = emqx_access_control:auth(Md5, <<"md5">>),
     reload([{password_hash, sha}]),
-    ok = emqttd_access_control:auth(Sha, <<"sha">>),
+    ok = emqx_access_control:auth(Sha, <<"sha">>),
     reload([{password_hash, sha256}]),
-    ok = emqttd_access_control:auth(Sha256, <<"sha256">>).
+    ok = emqx_access_control:auth(Sha256, <<"sha256">>).
 
 list_auth(_Config) ->
-    application:start(emq_auth_username),
-    emq_auth_username:add_user(<<"user1">>, <<"password1">>),
+    application:start(emqx_auth_username),
+    emqx_auth_username:add_user(<<"user1">>, <<"password1">>),
     User1 = #mqtt_client{client_id = <<"client1">>, username = <<"user1">>},
-    ok = emqttd_access_control:auth(User1, <<"password1">>),
+    ok = emqx_access_control:auth(User1, <<"password1">>),
     reload([{password_hash, plain}]),
     Plain = #mqtt_client{client_id = <<"client1">>, username = <<"plain">>},
-    ok = emqttd_access_control:auth(Plain, <<"plain">>),
-    application:stop(emq_auth_username).
+    ok = emqx_access_control:auth(Plain, <<"plain">>),
+    application:stop(emqx_auth_username).
 
 comment_config(_) ->
     application:stop(?APP),
     [application:unset_env(?APP, Par) || Par <- [auth_dn]],
     application:start(?APP),
-    ?assertEqual([], emqttd_access_control:lookup_mods(auth)).
+    ?assertEqual([], emqx_access_control:lookup_mods(auth)).
 
 reload(Config) when is_list(Config) ->
     application:stop(?APP),
@@ -92,14 +90,14 @@ start_apps(App) ->
     NewConfig = generate_config(App),
     lists:foreach(fun set_app_env/1, NewConfig).
 
-generate_config(emqttd) ->
-    Schema = cuttlefish_schema:files([local_path(["deps", "emqttd", "priv", "emq.schema"])]),
-    Conf = conf_parse:file([local_path(["deps", "emqttd", "etc", "emq.conf"])]),
+generate_config(emqx) ->
+    Schema = cuttlefish_schema:files([local_path(["deps", "emqx", "priv", "emqx.schema"])]),
+    Conf = conf_parse:file([local_path(["deps", "emqx", "etc", "emqx.conf"])]),
     cuttlefish_generator:map(Schema, Conf);
 
-generate_config(emq_auth_ldap) ->
-    Schema = cuttlefish_schema:files([local_path(["priv", "emq_auth_ldap.schema"])]),
-    Conf = conf_parse:file([local_path(["etc", "emq_auth_ldap.conf"])]),
+generate_config(emqx_auth_ldap) ->
+    Schema = cuttlefish_schema:files([local_path(["priv", "emqx_auth_ldap.schema"])]),
+    Conf = conf_parse:file([local_path(["etc", "emqx_auth_ldap.conf"])]),
     cuttlefish_generator:map(Schema, Conf).
 
 
@@ -118,7 +116,7 @@ local_path(Components) ->
 
 set_app_env({App, Lists}) ->
     F = fun ({acl_file, _Var}) ->
-                application:set_env(App, acl_file, local_path(["deps", "emqttd", "etc", "acl.conf"]));
+                application:set_env(App, acl_file, local_path(["deps", "emqx", "etc", "acl.conf"]));
             ({auth_dn, _Var}) ->
                 application:set_env(App, auth_dn, "cn=%u,ou=test_auth,dc=emqtt,dc=com");
             ({Par, Var}) ->

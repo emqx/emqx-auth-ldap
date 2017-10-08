@@ -14,17 +14,17 @@
 %% limitations under the License.
 %%--------------------------------------------------------------------
 
--module(emq_auth_ldap).
+-module(emqx_auth_ldap).
 
 -author("Feng Lee <feng@emqtt.io>").
 
 -include_lib("eldap/include/eldap.hrl").
 
--include_lib("emqttd/include/emqttd.hrl").
+-include_lib("emqx/include/emqx.hrl").
 
 -import(proplists, [get_value/2, get_value/3]).
 
--import(emq_auth_ldap_cli, [search/2, fill/2, gen_filter/2]).
+-import(emqx_auth_ldap_cli, [search/2, fill/2, gen_filter/2]).
 
 -export([init/1, check/3, description/0]).
 
@@ -58,5 +58,5 @@ check_pass(_, _)               -> {error, password_error}.
 
 description() -> "LDAP Authentication Plugin".
 
-hash(Type, Password) -> emqttd_auth_mod:passwd_hash(Type, Password).
+hash(Type, Password) -> emqx_auth_mod:passwd_hash(Type, Password).
 

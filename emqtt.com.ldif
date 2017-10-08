@@ -11,9 +11,23 @@ dn:ou=auth, dc=emqtt, dc=com
 ou:auth
 objectclass:organizationalUnit
 
+# craete acl.emqtt.com
+#dn:ou=acl, dc=emqtt, dc=com
+#ou:acl
+#objectclass:organizationalUnit
+
 # craete test.auth.emqtt.com
 dn:cn=test,ou=auth,dc=emqtt,dc=com
 cn:test
 username:test
 password:8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92
 objectclass:mqttUser
+
+# craete test.acl.emqtt.com
+#dn:cn=test,ou=acl,dc=emqtt,dc=com
+#cn:test
+#username:test
+#topic:test/#
+#allow:1
+#access:3
+#objectclass:mqttAcl

@@ -1,5 +1,5 @@
 
-emq_auth_ldap
+emqx_auth_ldap
 =============
 
 LDAP Authentication Plugin for the EMQ Broker
@@ -14,7 +14,7 @@ make && make tests
 Configuration
 -------------
 
-File: etc/emq_auth_ldap.conf
+File: etc/emqx_auth_ldap.conf
 
 ```
 auth.ldap.servers = 127.0.0.1
@@ -47,13 +47,16 @@ auth.ldap.auth_dn = cn=%u,ou=auth,dc=emqtt,dc=com
 ## Password hash: plain, md5, sha, sha256
 auth.ldap.password_hash = sha256
 
+## Temporarily unavailable
+## auth.ldap.acl_dn = cn=%u,ou=acl,dc=emqtt,dc=com
+
 ```
 
 Load the Plugin
 ---------------
 
 ```
-./bin/emq_ctl plugins load emq_auth_ldap
+./bin/emqx_ctl plugins load emqx_auth_ldap
 ```
 Configuration Open LDAP
 -----------------------
