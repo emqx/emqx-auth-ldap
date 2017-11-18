@@ -1,5 +1,5 @@
 
-emq_auth_ldap
+emq-auth-ldap
 =============
 
 LDAP Authentication Plugin for the EMQ Broker
@@ -97,5 +97,5 @@ Apache License Version 2.0
 Author
 ------
 
-feng at emqtt.io
+EMQ X Team.
 
