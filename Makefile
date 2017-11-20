@@ -1,6 +1,6 @@
 PROJECT = emqx_auth_ldap
 PROJECT_DESCRIPTION = EMQ X Authentication/ACL with LDAP
-PROJECT_VERSION = 2.4
+PROJECT_VERSION = 2.3.0
 
 DEPS = ecpool clique
 dep_ecpool = git https://github.com/emqtt/ecpool master
@@ -9,7 +9,7 @@ dep_clique  = git https://github.com/emqtt/clique
 LOCAL_DEPS = eldap
 
 BUILD_DEPS = emqx cuttlefish
-dep_emqx = git https://github.com/emqtt/emqttd X
+dep_emqx = git git@github.com:emqx/emqx X
 dep_cuttlefish = git https://github.com/emqtt/cuttlefish
 
 NO_AUTOPATCH = cuttlefish
