@@ -1,6 +1,6 @@
 PROJECT = emqx_auth_ldap
 PROJECT_DESCRIPTION = EMQ X Authentication/ACL with LDAP
-PROJECT_VERSION = 2.3.0
+PROJECT_VERSION = 2.3.2
 
 DEPS = ecpool clique
 dep_ecpool = git https://github.com/emqtt/ecpool master
