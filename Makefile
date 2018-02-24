@@ -1,6 +1,6 @@
 PROJECT = emqx_auth_ldap
 PROJECT_DESCRIPTION = EMQ X Authentication/ACL with LDAP
-PROJECT_VERSION = 2.4.1
+PROJECT_VERSION = 3.0
 
 DEPS = ecpool clique
 dep_ecpool = git https://github.com/emqtt/ecpool master
@@ -9,7 +9,7 @@ dep_clique  = git https://github.com/emqtt/clique
 LOCAL_DEPS = eldap
 
 BUILD_DEPS = emqx cuttlefish
-dep_emqx = git git@github.com:emqx/emqx-enterprise
+dep_emqx = git git@github.com:emqtt/emqttd emqx30
 dep_cuttlefish = git https://github.com/emqtt/cuttlefish
 
 NO_AUTOPATCH = cuttlefish
@@ -19,7 +19,7 @@ ERLC_OPTS += +'{parse_transform, lager_transform}'
 
 TEST_DEPS = emqttc emqx_auth_username
 dep_emqttc = git https://github.com/emqtt/emqttc
-dep_emqx_auth_username = git https://github.com/emqtt/emq-auth-username X
+dep_emqx_auth_username = git https://github.com/emqtt/emq-auth-username emqx30
 
 TEST_ERLC_OPTS += +debug_info
 TEST_ERLC_OPTS += +'{parse_transform, lager_transform}'
