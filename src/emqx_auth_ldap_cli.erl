@@ -1,5 +1,4 @@
-%%--------------------------------------------------------------------
-%% Copyright (c) 2013-2018 EMQ Enterprise, Inc. (http://emqtt.io)
+%% Copyright (c) 2018 EMQ Technologies Co., Ltd. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -12,7 +11,6 @@
 %% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
-%%--------------------------------------------------------------------
 
 -module(emqx_auth_ldap_cli).
 
@@ -44,8 +42,9 @@ gen_filter(Client, Dn) ->
     end.
 
 %%--------------------------------------------------------------------
-%% ldap Connect/Search
+%% LDAP Connect/Search
 %%--------------------------------------------------------------------
+
 connect(Opts) ->
     Servers      = get_value(servers, Opts, ["localhost"]),
     Port         = get_value(port, Opts, 389),
@@ -53,7 +52,7 @@ connect(Opts) ->
     BindDn       = get_value(bind_dn, Opts),
     BindPassword = get_value(bind_password, Opts),
     LdapOpts = case get_value(ssl, Opts, false) of
-        true -> 
+        true ->
             SslOpts = get_value(sslopts, Opts),
             [{port, Port}, {timeout, Timeout}, {sslopts, SslOpts}];
         false ->
@@ -63,8 +62,7 @@ connect(Opts) ->
     case eldap:open(Servers, LdapOpts) of
         {ok, LDAP} ->
             case catch eldap:simple_bind(LDAP, BindDn, BindPassword) of
-                ok ->
-                    {ok, LDAP};
+                ok -> {ok, LDAP};
                 {error, Error} ->
                     {error, Error};
                 {'EXIT', Reason} ->
@@ -76,4 +74,4 @@ connect(Opts) ->
 
 search(Base, Filter) ->
     ecpool:with_client(?APP, fun(C) -> eldap:search(C, [{base, Base}, {filter, Filter}]) end).
-    
+

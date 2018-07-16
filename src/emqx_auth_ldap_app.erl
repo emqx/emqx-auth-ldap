@@ -1,5 +1,4 @@
-%%--------------------------------------------------------------------
-%% Copyright (c) 2013-2018 EMQ Enterprise, Inc. (http://emqtt.io)
+%% Copyright (c) 2018 EMQ Technologies Co., Ltd. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -12,20 +11,15 @@
 %% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
-%%--------------------------------------------------------------------
 
 -module(emqx_auth_ldap_app).
 
 -behaviour(application).
 
-%% Application callbacks
--export([start/2, prep_stop/1, stop/1]).
-
 -include("emqx_auth_ldap.hrl").
 
-%%--------------------------------------------------------------------
 %% Application callbacks
-%%--------------------------------------------------------------------
+-export([start/2, prep_stop/1, stop/1]).
 
 start(_StartType, _StartArgs) ->
     {ok, Sup} = emqx_auth_ldap_sup:start_link(),
@@ -51,13 +45,6 @@ reg_authmod(AuthDn) ->
 reg_aclmod(AclDn) ->
     emqx_access_control:register_mod(acl, emqx_acl_ldap, AclDn).
 
-%%--------------------------------------------------------------------
-%% Internal function
-%%--------------------------------------------------------------------
-
 if_enabled(Cfg, Fun) ->
-    case application:get_env(?APP, Cfg) of
-        {ok, Dn} -> Fun(Dn);
-        undefined   -> ok
-    end.
+    case application:get_env(?APP, Cfg) of {ok, Dn} -> Fun(Dn); undefined -> ok end.
 

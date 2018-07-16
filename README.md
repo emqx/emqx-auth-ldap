@@ -1,8 +1,8 @@
 
 emqx_auth_ldap
-=============
+==============
 
-LDAP Authentication Plugin for EMQ X Broker
+EMQ X LDAP Authentication Plugin
 
 Build
 -----

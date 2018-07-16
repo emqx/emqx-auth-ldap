@@ -1,8 +1,16 @@
+%% Copyright (c) 2018 EMQ Technologies Co., Ltd. All Rights Reserved.
 %%
-%% Copyright (c) 2013-2017 EMQ Enterprise, Inc. All Rights Reserved.
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
 %%
-%% @doc ACL with OpenLDAP
+%%     http://www.apache.org/licenses/LICENSE-2.0
 %%
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permissions and
+%% limitations under the License.
 
 -module(emqx_acl_ldap).
 
@@ -25,7 +33,7 @@ init(AclDn) ->
     {ok, #state{acl_dn = AclDn}}.
 
 check_acl({#mqtt_client{username = <<$$, _/binary>>}, _PubSub, _Topic}, _State) ->
-    ignore; 
+    ignore;
 
 check_acl({Client, PubSub, Topic}, #state{acl_dn = AclDn}) ->
     Filter = gen_filter(Client, AclDn),
@@ -58,7 +66,7 @@ compile(Attributes) ->
 
 filter(PubSub, Rules) ->
     [Term || Term = {_, _, Access, _} <- Rules, Access =:= PubSub orelse Access =:= pubsub].
-    
+
 
 allow(<<"1">>)  -> allow;
 allow(<<"0">>)  -> deny.
@@ -77,3 +85,4 @@ reload_acl(_State) ->
 
 description() ->
     "ACL with LDAP".
+

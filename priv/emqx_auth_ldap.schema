@@ -1,5 +1,6 @@
 %%-*- mode: erlang -*-
 %% emqx_auth_ldap config mapping
+
 {mapping, "auth.ldap.servers", "emqx_auth_ldap.ldap", [
   {default, "127.0.0.1"},
   {datatype, string}
