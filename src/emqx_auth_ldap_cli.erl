@@ -24,21 +24,21 @@
 
 -export([connect/1, search/2, fill/2, gen_filter/2]).
 
-fill(Client, AuthDn) ->
+fill(#{client_id := ClientId, username := Username}, AuthDn) ->
     case re:run(AuthDn, "%[uc]", [global, {capture, all, list}]) of
         {match, [["%u"]]} ->
-            re:replace(AuthDn, "%u", binary_to_list(Client#mqtt_client.username), [global, {return, list}]);
+            re:replace(AuthDn, "%u", binary_to_list(Username), [global, {return, list}]);
         {match, [["%c"]]} ->
-            re:replace(AuthDn, "%c", binary_to_list(Client#mqtt_client.client_id), [global, {return, list}]);
+            re:replace(AuthDn, "%c", binary_to_list(ClientId), [global, {return, list}]);
         nomatch ->
             AuthDn
     end.
 
-gen_filter(Client, Dn) ->
+gen_filter(#{client_id := ClientId, username := Username}, Dn) ->
     case re:run(Dn, "%[uc]", [global, {capture, all, list}]) of
-        {match, [["%u"]]} -> eldap:equalityMatch("username", Client#mqtt_client.username);
-        {match, [["%c"]]} -> eldap:equalityMatch("username", Client#mqtt_client.client_id);
-        nomatch           -> eldap:equalityMatch("username", Client#mqtt_client.username)
+        {match, [["%u"]]} -> eldap:equalityMatch("username", Username);
+        {match, [["%c"]]} -> eldap:equalityMatch("username", ClientId);
+        nomatch           -> eldap:equalityMatch("username", Username)
     end.
 
 %%--------------------------------------------------------------------

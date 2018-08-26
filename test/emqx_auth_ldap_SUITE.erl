@@ -1,5 +1,4 @@
-%%--------------------------------------------------------------------
-%% Copyright (c) 2012-2017 Feng Lee <feng@emqtt.io>.
+%% Copyright (c) 2018 EMQ Technologies Co., Ltd. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -12,7 +11,6 @@
 %% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
-%%--------------------------------------------------------------------
 
 -module(emqx_auth_ldap_SUITE).
 
@@ -30,7 +28,7 @@
 
 -include_lib("common_test/include/ct.hrl").
 
-all() -> 
+all() ->
     [{group, emqx_auth_ldap_auth},
      {group, emqx_auth_ldap}].
 
@@ -52,27 +50,27 @@ end_per_suite(_Config) ->
     [application:stop(App) || App <- [emqx_auth_ldap, emqx]].
 
 check_auth(_) ->
-    Plain = #mqtt_client{client_id = <<"client1">>, username = <<"plain">>},
-    Md5 = #mqtt_client{client_id = <<"md5">>, username = <<"md5">>},
-    Sha = #mqtt_client{client_id = <<"sha">>, username = <<"sha">>},
-    Sha256 = #mqtt_client{client_id = <<"sha256">>, username = <<"sha256">>},
+    Plain = #{client_id => <<"client1">>, username => <<"plain">>},
+    Md5 = #{client_id => <<"md5">>, username => <<"md5">>},
+    Sha = #{client_id => <<"sha">>, username => <<"sha">>},
+    Sha256 = #{client_id => <<"sha256">>, username => <<"sha256">>},
     reload([{password_hash, plain}]),
-    ok = emqx_access_control:auth(Plain, <<"plain">>),
+    ok = emqx_access_control:authenticate(Plain, <<"plain">>),
     reload([{password_hash, md5}]),
-    ok  = emqx_access_control:auth(Md5, <<"md5">>),
+    ok  = emqx_access_control:authenticate(Md5, <<"md5">>),
     reload([{password_hash, sha}]),
-    ok = emqx_access_control:auth(Sha, <<"sha">>),
+    ok = emqx_access_control:authenticate(Sha, <<"sha">>),
     reload([{password_hash, sha256}]),
-    ok = emqx_access_control:auth(Sha256, <<"sha256">>).
+    ok = emqx_access_control:authenticate(Sha256, <<"sha256">>).
 
 list_auth(_Config) ->
     application:start(emqx_auth_username),
     emqx_auth_username:add_user(<<"user1">>, <<"password1">>),
-    User1 = #mqtt_client{client_id = <<"client1">>, username = <<"user1">>},
-    ok = emqx_access_control:auth(User1, <<"password1">>),
+    User1 = #{client_id => <<"client1">>, username => <<"user1">>},
+    ok = emqx_access_control:authenticate(User1, <<"password1">>),
     reload([{password_hash, plain}]),
-    Plain = #mqtt_client{client_id = <<"client1">>, username = <<"plain">>},
-    ok = emqx_access_control:auth(Plain, <<"plain">>),
+    Plain = #{client_id => <<"client1">>, username => <<"plain">>},
+    ok = emqx_access_control:authenticate(Plain, <<"plain">>),
     application:stop(emqx_auth_username).
 
 comment_config(_) ->
@@ -129,15 +127,15 @@ prepare(Handle) ->
     eldap:add(Handle, "dc=emqtt,dc=com",
                       [{"objectclass", ["dcObject", "organization"]},
                        {"dc", ["emqtt"]}, {"o", ["emqtt,Inc."]}]),
-    
+
     ok = eldap:add(Handle, ?AuthDN,
                       [{"objectclass", ["organizationalUnit"]},
                        {"ou", ["test_auth"]}]),
     %% Add
     ok = eldap:add(Handle, "cn=plain," ++ ?AuthDN,
                  [{"objectclass", ["mqttUser"]},
-                  {"cn", ["plain"]}, 
-                  {"username", ["plain"]}, 
+                  {"cn", ["plain"]},
+                  {"username", ["plain"]},
                   {"password", ["plain"]}]),
 
     ok = eldap:add(Handle, "cn=md5," ++ ?AuthDN,

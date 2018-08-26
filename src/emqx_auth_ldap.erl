@@ -23,19 +23,17 @@
 
 -export([init/1, check/3, description/0]).
 
--record(state, {auth_dn, hash_type}).
-
 -define(EMPTY(Username), (Username =:= undefined orelse Username =:= <<>>)).
 
 init({AuthDn, HashType}) ->
-    {ok, #state{auth_dn = AuthDn, hash_type = HashType}}.
+    {ok, #{auth_dn => AuthDn, hash_type => HashType}}.
 
-check(#mqtt_client{username = Username}, Password, _State) when ?EMPTY(Username); ?EMPTY(Password) ->
+check(#{username := Username}, Password, _State) when ?EMPTY(Username); ?EMPTY(Password) ->
     {error, username_or_password_undefined};
 
-check(Client, Password, #state{auth_dn = AuthDn, hash_type = HashType}) ->
-    Filter = gen_filter(Client, AuthDn),
-    case search(fill(Client, AuthDn), Filter) of
+check(Credentials, Password, #{auth_dn := AuthDn, hash_type := HashType}) ->
+    Filter = gen_filter(Credentials, AuthDn),
+    case search(fill(Credentials, AuthDn), Filter) of
         {ok, #eldap_search_result{entries = []}} ->
             ignore;
         {ok, #eldap_search_result{entries = [Entry]}} ->
@@ -46,12 +44,10 @@ check(Client, Password, #state{auth_dn = AuthDn, hash_type = HashType}) ->
     end.
 
 check_pass(PassHash, Password, HashType) ->
-    check_pass(PassHash, hash(HashType, Password)).
+    check_pass(PassHash, emqx_passwd:hash(HashType, Password)).
 
 check_pass(PassHash, PassHash) -> ok;
 check_pass(_, _)               -> {error, password_error}.
 
 description() -> "LDAP Authentication Plugin".
-
-hash(Type, Password) -> emqx_auth_mod:passwd_hash(Type, Password).
 

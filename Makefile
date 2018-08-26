@@ -4,9 +4,10 @@ PROJECT_VERSION = 3.0
 
 LOCAL_DEPS = eldap
 
-DEPS = ecpool clique
+DEPS = ecpool clique emqx_passwd
 dep_ecpool = git https://github.com/emqtt/ecpool master
 dep_clique  = git https://github.com/emqx/clique
+dep_emqx_passwd = git https://github.com/emqx/emqx-passwd
 
 BUILD_DEPS = emqx cuttlefish
 dep_emqx = git https://github.com/emqtt/emqttd emqx30

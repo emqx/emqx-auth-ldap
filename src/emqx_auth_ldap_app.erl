@@ -46,5 +46,8 @@ reg_aclmod(AclDn) ->
     emqx_access_control:register_mod(acl, emqx_acl_ldap, AclDn).
 
 if_enabled(Cfg, Fun) ->
-    case application:get_env(?APP, Cfg) of {ok, Dn} -> Fun(Dn); undefined -> ok end.
+    case application:get_env(?APP, Cfg) of
+        {ok, Dn} -> Fun(Dn);
+        undefined -> ok
+    end.
 
