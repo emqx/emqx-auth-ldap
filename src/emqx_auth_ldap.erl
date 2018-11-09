@@ -38,16 +38,10 @@ check(Credentials, Password, #{auth_dn := AuthDn, hash_type := HashType}) ->
             ignore;
         {ok, #eldap_search_result{entries = [Entry]}} ->
             Attributes = Entry#eldap_entry.attributes,
-            check_pass(list_to_binary(proplists:get_value("password", Attributes)), Password, HashType);
+            emqx_passwd:check_pass({list_to_binary(proplists:get_value("password", Attributes)), Password}, HashType);
         {error, Reason} ->
             {error, Reason}
     end.
-
-check_pass(PassHash, Password, HashType) ->
-    check_pass(PassHash, emqx_passwd:hash(HashType, Password)).
-
-check_pass(PassHash, PassHash) -> ok;
-check_pass(_, _)               -> {error, password_error}.
 
 description() -> "LDAP Authentication Plugin".
 
