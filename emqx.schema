@@ -15,7 +15,7 @@ attributetype ( 1.3.6.1.4.1.7914.1.2.1.2 NAME 'password'
     SINGLE-value )
 
 objectclass ( 1.3.6.1.4.1.7914.1.2.2.1 NAME 'mqttUser'
-    DESC 'Emqtt User'
+    DESC 'EMQX User'
     SUP top STRUCTURAL
     MUST ( cn $ username $ password )
     MAY ( description ) )
@@ -39,7 +39,7 @@ objectclass ( 1.3.6.1.4.1.7914.1.2.2.1 NAME 'mqttUser'
 ##    SINGLE-value )
 
 ## objectclass ( 1.3.6.1.4.1.7914.1.2.2.2 NAME 'mqttAcl'
-##    DESC 'Emqtt Acl'
+##    DESC 'EMQX Acl'
 ##    SUP top STRUCTURAL
 ##    MUST ( cn $ username $ allow $ topic $ access )
 ##    MAY ( description ) )

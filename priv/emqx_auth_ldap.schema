@@ -13,7 +13,7 @@
 
 {mapping, "auth.ldap.bind_dn", "emqx_auth_ldap.ldap", [
   {datatype, string},
-  {default, "cn=root,dc=emqtt,dc=com"}
+  {default, "cn=root,dc=emqx,dc=com"}
 ]}.
 
 {mapping, "auth.ldap.bind_password", "emqx_auth_ldap.ldap", [

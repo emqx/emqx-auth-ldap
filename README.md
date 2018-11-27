@@ -22,7 +22,7 @@ auth.ldap.port = 389
 
 auth.ldap.timeout = 30
 
-auth.ldap.bind_dn = cn=root,dc=emqtt,dc=com
+auth.ldap.bind_dn = cn=root,dc=emqx,dc=com
 
 auth.ldap.bind_password = public
 
@@ -41,13 +41,13 @@ auth.ldap.ssl = false
 #auth.ldap.ssl.fail_if_no_peer_cert = true
 
 ## Variables: %u = username, %c = clientid
-auth.ldap.auth_dn = cn=%u,ou=auth,dc=emqtt,dc=com
+auth.ldap.auth_dn = cn=%u,ou=auth,dc=emqx,dc=com
 
 ## Password hash: plain, md5, sha, sha256
 auth.ldap.password_hash = sha256
 
 ## Temporarily unavailable
-## auth.ldap.acl_dn = cn=%u,ou=acl,dc=emqtt,dc=com
+## auth.ldap.acl_dn = cn=%u,ou=acl,dc=emqx,dc=com
 
 ```
 
@@ -64,26 +64,26 @@ vim /etc/openldap/slapd.conf
 
 ```
 database bdb
-suffix   "dc=emqtt,dc=com"
-rootdn   "cn=root,dc=emqtt,dc=com"
+suffix   "dc=emqx,dc=com"
+rootdn   "cn=root,dc=emqx,dc=com"
 rootpw   {SSHA}xvvgeQvLGZzHrCzFTfAOkL1gkHQrJX59
 
 ```
 
 
-Include Emqtt Schema
+Include EMQX Schema
 --------------------
 
 vim /etc/openldap/slapd.conf
 ```
-include emqtt.schema
+include emqx.schema
 ```
 
-Create Emqtt User Data
+Create EMQX User Data
 ----------------------
 
 ```
-# ldapadd -x -D "cn=root,dc=emqtt,dc=com" -w public -f emqtt.com.ldif
+# ldapadd -x -D "cn=root,dc=emqx,dc=com" -w public -f emqx.com.ldif
 ```
 
 TODO

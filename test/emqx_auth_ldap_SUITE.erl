@@ -20,7 +20,7 @@
 
 -define(APP, ?POOL).
 
--define(AuthDN, "ou=test_auth,dc=emqtt,dc=com").
+-define(AuthDN, "ou=test_auth,dc=emqx,dc=com").
 
 -include_lib("emqx/include/emqx.hrl").
 
@@ -116,7 +116,7 @@ set_app_env({App, Lists}) ->
     F = fun ({acl_file, _Var}) ->
                 application:set_env(App, acl_file, local_path(["deps", "emqx", "etc", "acl.conf"]));
             ({auth_dn, _Var}) ->
-                application:set_env(App, auth_dn, "cn=%u,ou=test_auth,dc=emqtt,dc=com");
+                application:set_env(App, auth_dn, "cn=%u,ou=test_auth,dc=emqx,dc=com");
             ({Par, Var}) ->
                 application:set_env(App, Par, Var)
         end,
@@ -124,9 +124,9 @@ set_app_env({App, Lists}) ->
     application:ensure_all_started(App).
 
 prepare(Handle) ->
-    eldap:add(Handle, "dc=emqtt,dc=com",
+    eldap:add(Handle, "dc=emqx,dc=com",
                       [{"objectclass", ["dcObject", "organization"]},
-                       {"dc", ["emqtt"]}, {"o", ["emqtt,Inc."]}]),
+                       {"dc", ["emqx"]}, {"o", ["emqx,Inc."]}]),
 
     ok = eldap:add(Handle, ?AuthDN,
                       [{"objectclass", ["organizationalUnit"]},
