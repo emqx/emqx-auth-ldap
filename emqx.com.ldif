@@ -1,30 +1,30 @@
-## create emqx.com
-dn:dc=emqx, dc=com
+## create emqx.io
+dn:dc=emqx, dc=io
 objectclass:top
 objectclass:dcobject
 objectclass:organization
 dc:emqx
 o:emqx,Inc.
 
-# create auth.emqx.com
-dn:ou=auth, dc=emqx, dc=com
+# create auth.emqx.io
+dn:ou=auth, dc=emqx, dc=io
 ou:auth
 objectclass:organizationalUnit
 
-# craete acl.emqx.com
-#dn:ou=acl, dc=emqx, dc=com
+# create acl.emqx.io
+#dn:ou=acl, dc=emqx, dc=io
 #ou:acl
 #objectclass:organizationalUnit
 
-# craete test.auth.emqx.com
-dn:cn=test,ou=auth,dc=emqx,dc=com
+# create test.auth.emqx.io
+dn:cn=test,ou=auth,dc=emqx,dc=io
 cn:test
 username:test
 password:8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92
 objectclass:mqttUser
 
-# craete test.acl.emqx.com
-#dn:cn=test,ou=acl,dc=emqx,dc=com
+# create test.acl.emqx.io
+#dn:cn=test,ou=acl,dc=emqx,dc=io
 #cn:test
 #username:test
 #topic:test/#

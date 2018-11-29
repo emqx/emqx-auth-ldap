@@ -33,7 +33,7 @@ include erlang.mk
 
 CUTTLEFISH_SCRIPT = _build/default/lib/cuttlefish/cuttlefish
 
-app.config: $(CUTTLEFISH_SCRIPT) etc/emqx_auth_username.conf
+app.config: $(CUTTLEFISH_SCRIPT) etc/emqx_auth_ldap.conf
 	$(verbose) $(CUTTLEFISH_SCRIPT) -l info -e etc/ -c etc/emqx_auth_ldap.conf -i priv/emqx_auth_ldap.schema -d data
 
 $(CUTTLEFISH_SCRIPT): rebar-deps
