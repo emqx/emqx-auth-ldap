@@ -16,11 +16,19 @@
 
 -compile(export_all).
 
--define(POOL, emqx_auth_ldap).
+-compile(no_warning_export).
 
--define(APP, ?POOL).
+-define(PID, emqx_auth_ldap).
 
--define(AuthDN, "ou=test_auth,dc=emqx,dc=com").
+-define(APP, emqx_auth_ldap).
+
+-define(AUTHDN, "ou=test_auth,dc=emqx,dc=io").
+
+-define(TESTAUTHDN, "cn=%u,ou=test_auth,dc=emqx,dc=io").
+
+-define(ACLDN, "ou=test_acl,dc=emqx,dc=io").
+
+-define(TESTACLDN, "ou=test_acl,dc=emqx,dc=io").
 
 -include_lib("emqx/include/emqx.hrl").
 
@@ -34,23 +42,82 @@ all() ->
 
 groups() ->
     [{emqx_auth_ldap_auth, [sequence], [check_auth, list_auth]},
-     {emqx_auth_ldap, [sequence], [comment_config]}
-    ].
+     {emqx_auth_ldap, [sequence], [comment_config]}].
 
 init_per_suite(Config) ->
-    [start_apps(App) || App <- [emqx, emqx_auth_ldap]],
-    {ok, Handle} = ecpool_worker:client(gproc_pool:pick_worker({ecpool, ?POOL})),
-    cleanup(Handle),
-    prepare(Handle),
+    [start_apps(App, SchemaFile, ConfigFile) ||
+        {App, SchemaFile, ConfigFile}
+            <- [{emqx, deps_path(emqx, "priv/emqx.schema"),
+                       deps_path(emqx, "etc/emqx.conf")},
+                {emqx_auth_ldap, local_path("priv/emqx_auth_ldap.schema"),
+                                 local_path("etc/emqx_auth_ldap.conf")}]],
+    dbg:start(),
+    dbg:tracer(),
+    dbg:p(all, c),
+    dbg:tpl(emqx_access_control, authenticate, x),
+    dbg:tpl(emqx_auth_ldap, check, x),
+    dbg:tpl(emqx_auth_ldap_cli, gen_filter, x),
+    dbg:tpl(emqx_auth_ldap_cli, fill, x),
+    dbg:tpl(eldap, search, x),
+    prepare(),
     Config.
 
 end_per_suite(_Config) ->
-    {ok, Handle} = ecpool_worker:client(gproc_pool:pick_worker({ecpool, ?POOL})),
-    cleanup(Handle),
+    clean(),
     [application:stop(App) || App <- [emqx_auth_ldap, emqx]].
 
+prepare() ->
+    {ok, Pid} = ecpool_worker:client(gproc_pool:pick_worker({ecpool, ?PID})),
+    init_acl(Pid),
+    init_auth(Pid).
+
+clean() ->
+    {ok, Pid} = ecpool_worker:client(gproc_pool:pick_worker({ecpool, ?PID})),
+    init_acl(Pid),
+    init_auth(Pid).
+
+init_acl(_Pid) ->
+    ok.
+
+clean_acl() ->
+    {ok, _Pid} = ecpool_worker:client(gproc_pool:pick_worker({ecpool, ?PID})).
+
+init_auth(Pid) ->
+    eldap:add(Pid, "dc=emqx,dc=io",
+                   [{"objectclass", ["dcObject", "organization"]},
+                    {"dc", ["emqx"]}, {"o", ["emqx,Inc."]}]),
+    eldap:add(Pid, ?AUTHDN,
+                   [{"objectclass", ["organizationalUnit"]},
+                    {"ou", ["test_auth"]}]),
+    eldap:add(Pid, "cn=plain," ++ ?AUTHDN,
+                   [{"objectclass", ["mqttUser"]},
+                    {"cn", ["plain"]},
+                    {"username", ["plain"]},
+                    {"password", ["plain"]}]),
+    eldap:add(Pid, "cn=md5," ++ ?AUTHDN,
+                   [{"objectclass", ["mqttUser"]},
+                    {"cn", ["md5"]}, {"username", ["md5"]}, {"password", ["1bc29b36f623ba82aaf6724fd3b16718"]}]),
+    eldap:add(Pid, "cn=sha," ++ ?AUTHDN,
+                   [{"objectclass", ["mqttUser"]},
+                    {"cn", ["sha"]}, {"username", ["sha"]}, {"password", ["d8f4590320e1343a915b6394170650a8f35d6926"]}]),
+    eldap:add(Pid, "cn=sha256," ++ ?AUTHDN,
+                   [{"objectclass", ["mqttUser"]},
+                    {"cn", ["sha256"]}, {"username", ["sha256"]}, {"password", ["5d5b09f6dcb2d53a5fffc60c4ac0d55fabdf556069d6631545f42aa6e3500f2e"]}]).
+
+clean_auth() ->
+    {ok, Pid} = ecpool_worker:client(gproc_pool:pick_worker({ecpool, ?PID})),
+    case eldap:search(Pid, [{base, ?AUTHDN},
+                            {filter, eldap:present("objectclass")},
+                            {scope, eldap:wholeSubtree()}])
+    of
+        {ok, {eldap_search_result, Entries, _}} ->
+            [ok = eldap:delete(Pid, Entry) || {eldap_entry, Entry, _} <- Entries];
+        _ -> ignore
+    end,
+    ok.
+
 check_auth(_) ->
-    Plain = #{client_id => <<"client1">>, username => <<"plain">>},
+    Plain = #{client_id => <<"plain">>, username => <<"plain">>},
     Md5 = #{client_id => <<"md5">>, username => <<"md5">>},
     Sha = #{client_id => <<"sha">>, username => <<"sha">>},
     Sha256 = #{client_id => <<"sha256">>, username => <<"sha256">>},
@@ -84,77 +151,36 @@ reload(Config) when is_list(Config) ->
     [application:set_env(?APP, K, V) || {K, V} <- Config],
     application:start(?APP).
 
-start_apps(App) ->
-    NewConfig = generate_config(App),
-    lists:foreach(fun set_app_env/1, NewConfig).
-
-generate_config(emqx) ->
-    Schema = cuttlefish_schema:files([local_path(["deps", "emqx", "priv", "emqx.schema"])]),
-    Conf = conf_parse:file([local_path(["deps", "emqx", "etc", "emqx.conf"])]),
-    cuttlefish_generator:map(Schema, Conf);
-
-generate_config(emqx_auth_ldap) ->
-    Schema = cuttlefish_schema:files([local_path(["priv", "emqx_auth_ldap.schema"])]),
-    Conf = conf_parse:file([local_path(["etc", "emqx_auth_ldap.conf"])]),
-    cuttlefish_generator:map(Schema, Conf).
-
-
-get_base_dir(Module) ->
-    {file, Here} = code:is_loaded(Module),
-    filename:dirname(filename:dirname(Here)).
-
-get_base_dir() ->
-    get_base_dir(?MODULE).
-
-local_path(Components, Module) ->
-    filename:join([get_base_dir(Module) | Components]).
-
-local_path(Components) ->
-    local_path(Components, ?MODULE).
-
-set_app_env({App, Lists}) ->
-    F = fun ({acl_file, _Var}) ->
-                application:set_env(App, acl_file, local_path(["deps", "emqx", "etc", "acl.conf"]));
-            ({auth_dn, _Var}) ->
-                application:set_env(App, auth_dn, "cn=%u,ou=test_auth,dc=emqx,dc=com");
-            ({Par, Var}) ->
-                application:set_env(App, Par, Var)
-        end,
-    lists:foreach(F, Lists),
+start_apps(App, SchemaFile, ConfigFile) ->
+    read_schema_configs(App, SchemaFile, ConfigFile),
+    set_special_configs(App),
     application:ensure_all_started(App).
 
-prepare(Handle) ->
-    eldap:add(Handle, "dc=emqx,dc=com",
-                      [{"objectclass", ["dcObject", "organization"]},
-                       {"dc", ["emqx"]}, {"o", ["emqx,Inc."]}]),
+read_schema_configs(App, SchemaFile, ConfigFile) ->
+    ct:pal("Read configs - SchemaFile: ~p, ConfigFile: ~p", [SchemaFile, ConfigFile]),
+    Schema = cuttlefish_schema:files([SchemaFile]),
+    Conf = conf_parse:file(ConfigFile),
+    NewConfig = cuttlefish_generator:map(Schema, Conf),
+    Vals = proplists:get_value(App, NewConfig, []),
+    [application:set_env(App, Par, Value) || {Par, Value} <- Vals].
 
-    ok = eldap:add(Handle, ?AuthDN,
-                      [{"objectclass", ["organizationalUnit"]},
-                       {"ou", ["test_auth"]}]),
-    %% Add
-    ok = eldap:add(Handle, "cn=plain," ++ ?AuthDN,
-                 [{"objectclass", ["mqttUser"]},
-                  {"cn", ["plain"]},
-                  {"username", ["plain"]},
-                  {"password", ["plain"]}]),
+set_special_configs(emqx) ->
+    application:set_env(emqx, allow_anonymous, false),
+    application:set_env(emqx, enable_acl_cache, false),
+    application:set_env(emqx, plugins_loaded_file, deps_path(emqx, "test/emqx_SUITE_data/loaded_plugins"));
+set_special_configs(emqx_auth_ldap) ->
+    application:set_env(emqx_auth_ldap, auth_dn, ?TESTAUTHDN),
+    application:set_env(emqx_auth_ldap, acl_dn, ?TESTACLDN);
+set_special_configs(_App) ->
+    ok.
 
-    ok = eldap:add(Handle, "cn=md5," ++ ?AuthDN,
-                 [{"objectclass", ["mqttUser"]},
-                  {"cn", ["md5"]}, {"username", ["md5"]}, {"password", ["1bc29b36f623ba82aaf6724fd3b16718"]}]),
-    ok = eldap:add(Handle, "cn=sha," ++ ?AuthDN,
-                 [{"objectclass", ["mqttUser"]},
-                  {"cn", ["sha"]}, {"username", ["sha"]}, {"password", ["d8f4590320e1343a915b6394170650a8f35d6926"]}]),
-    ok = eldap:add(Handle, "cn=sha256," ++ ?AuthDN,
-                 [{"objectclass", ["mqttUser"]},
-                  {"cn", ["sha256"]}, {"username", ["sha256"]}, {"password", ["5d5b09f6dcb2d53a5fffc60c4ac0d55fabdf556069d6631545f42aa6e3500f2e"]}]).
+local_path(RelativePath) ->
+    deps_path(emqx_auth_ldap, RelativePath).
 
-cleanup(Handle) ->
-    case eldap:search(Handle, [{base, ?AuthDN},
-                               {filter, eldap:present("objectclass")},
-                               {scope,  eldap:wholeSubtree()}])
-    of
-        {ok, {eldap_search_result, Entries, _}} ->
-            [ok = eldap:delete(Handle, Entry) || {eldap_entry, Entry, _} <- Entries];
-        _ -> ignore
-   end,
-   ok.
+deps_path(App, RelativePath) ->
+    Path0 = code:priv_dir(App),
+    Path = case file:read_link(Path0) of
+               {ok, Resolved} -> Resolved;
+               {error, _} -> Path0
+            end,
+    filename:join([Path, "..", RelativePath]).

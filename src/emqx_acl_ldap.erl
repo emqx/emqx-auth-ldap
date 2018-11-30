@@ -19,7 +19,7 @@
 -include_lib("emqx/include/emqx.hrl").
 -include_lib("eldap/include/eldap.hrl").
 
--import(proplists, [get_value/2, get_value/3]).
+-import(proplists, [get_value/2]).
 -import(emqx_auth_ldap_cli, [search/2, fill/2, gen_filter/2]).
 
 %% ACL Callbacks

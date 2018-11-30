@@ -61,11 +61,13 @@ connect(Opts) ->
 
     case eldap:open(Servers, LdapOpts) of
         {ok, LDAP} ->
-            case catch eldap:simple_bind(LDAP, BindDn, BindPassword) of
-                ok -> {ok, LDAP};
+            try eldap:simple_bind(LDAP, BindDn, BindPassword) of
+                ok -> 
+                    {ok, LDAP};
                 {error, Error} ->
-                    {error, Error};
-                {'EXIT', Reason} ->
+                    {error, Error}
+            catch
+                error : Reason ->
                     {error, Reason}
             end;
         {error, Reason} ->
