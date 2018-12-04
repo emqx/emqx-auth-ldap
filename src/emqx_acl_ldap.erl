@@ -22,20 +22,24 @@
 %% ACL Callbacks
 -export([init/1, check_acl/2, reload_acl/1, description/0]).
 
--import(proplists, [get_value/2]).
+-import(proplists, [get_value/2, get_value/3]).
 
 -import(lists, [concat/1]).
 
 -import(emqx_auth_ldap_cli, [search/2, search/3]).
 
-init(DeviceDn) ->
-    {ok, #{device_dn => DeviceDn}}.
+init(ENVS) ->
+    DeviceDn = get_value(device_dn, ENVS, "ou=device,ou=Auth,ou=MQ,dc=emqx,dc=io"),
+    ObjectClass = get_value(objectclass, ENVS, "mqttUser"),
+    {ok, #{device_dn => DeviceDn,
+           objectclass => ObjectClass}}.
 
 check_acl({#{username := <<$$, _/binary>>}, _PubSub, _Topic}, _State) ->
     ignore;
 
-check_acl({_Credentials = #{username := Username}, PubSub, Topic}, #{device_dn := DeviceDn}) ->
-    Filter = eldap2:equalityMatch("objectClass", "uiotMQTT"),
+check_acl({_Credentials = #{username := Username}, PubSub, Topic}, #{device_dn := DeviceDn,
+                                                                     objectclass := ObjectClass}) ->
+    Filter = eldap2:equalityMatch("objectClass", ObjectClass),
     Attribute = case PubSub of
                     publish   -> "mqttPublishTopic";
                     subscribe -> "mqttSubscriptionTopic"
@@ -62,22 +66,6 @@ match(Topic, [Filter | Topics]) ->
         true  -> allow;
         false -> match(Topic, Topics)
     end.
-
-%% compile(Attributes) ->
-%%     Topic = list_to_binary(get_value("topic", Attributes)),
-%%     Allow  = allow(list_to_binary(get_value("allow", Attributes))),
-%%     Access = access(list_to_binary(get_value("access", Attributes))),
-%%     [emqx_access_rule:compile({Allow, all, Access, [topic(Topic)]})].
-
-filter(PubSub, Rules) ->
-    [Term || Term = {_, _, Access, _} <- Rules,
-             Access =:= PubSub orelse Access =:= pubsub].
-
-
-topic(<<"eq ", Topic/binary>>) ->
-    {eq, Topic};
-topic(Topic) ->
-    Topic.
 
 reload_acl(_State) ->
     ok.
