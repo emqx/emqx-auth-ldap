@@ -22,13 +22,9 @@
 
 -define(APP, emqx_auth_ldap).
 
--define(AUTHDN, "ou=test_auth,dc=emqx,dc=io").
+-define(DeviceDN, "ou=test_device,dc=emqx,dc=io").
 
--define(TESTAUTHDN, "cn=%u,ou=test_auth,dc=emqx,dc=io").
-
--define(ACLDN, "ou=test_acl,dc=emqx,dc=io").
-
--define(TESTACLDN, "ou=test_acl,dc=emqx,dc=io").
+-define(AuthDN, "ou=test_auth,dc=emqx,dc=io").
 
 -include_lib("emqx/include/emqx.hrl").
 
@@ -37,28 +33,31 @@
 -include_lib("common_test/include/ct.hrl").
 
 all() ->
-    [{group, emqx_auth_ldap_auth},
-     {group, emqx_auth_ldap}].
+    [
+     {group, emqx_auth_ldap_auth}
+     %% {group, emqx_auth_ldap}
+    ].
 
 groups() ->
     [{emqx_auth_ldap_auth, [sequence], [check_auth, list_auth]},
      {emqx_auth_ldap, [sequence], [comment_config]}].
 
 init_per_suite(Config) ->
+    dbg:start(),
+    dbg:tracer(),
+    dbg:p(all, c),
+    dbg:tpl(eldap, add, x),
+    dbg:tpl(emqx_access_control, authenticate, x),
+    dbg:tpl(emqx_auth_ldap, check, x),
+    dbg:tpl(emqx_auth_ldap_cli, gen_filter, x),
+    dbg:tpl(emqx_auth_ldap_cli, fill, x),
+    dbg:tpl(eldap, search, x),
     [start_apps(App, SchemaFile, ConfigFile) ||
         {App, SchemaFile, ConfigFile}
             <- [{emqx, deps_path(emqx, "priv/emqx.schema"),
                        deps_path(emqx, "etc/emqx.conf")},
                 {emqx_auth_ldap, local_path("priv/emqx_auth_ldap.schema"),
                                  local_path("etc/emqx_auth_ldap.conf")}]],
-    dbg:start(),
-    dbg:tracer(),
-    dbg:p(all, c),
-    dbg:tpl(emqx_access_control, authenticate, x),
-    dbg:tpl(emqx_auth_ldap, check, x),
-    dbg:tpl(emqx_auth_ldap_cli, gen_filter, x),
-    dbg:tpl(emqx_auth_ldap_cli, fill, x),
-    dbg:tpl(eldap, search, x),
     prepare(),
     Config.
 
@@ -73,40 +72,52 @@ prepare() ->
 
 clean() ->
     {ok, Pid} = ecpool_worker:client(gproc_pool:pick_worker({ecpool, ?PID})),
-    init_acl(Pid),
-    init_auth(Pid).
+    clean_acl(Pid),
+    clean_auth(Pid).
 
 init_acl(_Pid) ->
     ok.
 
-clean_acl() ->
-    {ok, _Pid} = ecpool_worker:client(gproc_pool:pick_worker({ecpool, ?PID})).
+clean_acl(Pid) ->
+    %% {ok, _Pid} = ecpool_worker:client(gproc_pool:pick_worker({ecpool, ?PID})).
+    ok.
 
 init_auth(Pid) ->
+    %% add origanization info
     eldap:add(Pid, "dc=emqx,dc=io",
                    [{"objectclass", ["dcObject", "organization"]},
                     {"dc", ["emqx"]}, {"o", ["emqx,Inc."]}]),
-    eldap:add(Pid, ?AUTHDN,
-                   [{"objectclass", ["organizationalUnit"]},
-                    {"ou", ["test_auth"]}]),
-    eldap:add(Pid, "cn=plain," ++ ?AUTHDN,
-                   [{"objectclass", ["mqttUser"]},
-                    {"cn", ["plain"]},
-                    {"username", ["plain"]},
-                    {"password", ["plain"]}]),
-    eldap:add(Pid, "cn=md5," ++ ?AUTHDN,
-                   [{"objectclass", ["mqttUser"]},
-                    {"cn", ["md5"]}, {"username", ["md5"]}, {"password", ["1bc29b36f623ba82aaf6724fd3b16718"]}]),
-    eldap:add(Pid, "cn=sha," ++ ?AUTHDN,
-                   [{"objectclass", ["mqttUser"]},
-                    {"cn", ["sha"]}, {"username", ["sha"]}, {"password", ["d8f4590320e1343a915b6394170650a8f35d6926"]}]),
-    eldap:add(Pid, "cn=sha256," ++ ?AUTHDN,
-                   [{"objectclass", ["mqttUser"]},
-                    {"cn", ["sha256"]}, {"username", ["sha256"]}, {"password", ["5d5b09f6dcb2d53a5fffc60c4ac0d55fabdf556069d6631545f42aa6e3500f2e"]}]).
 
-clean_auth() ->
-    {ok, Pid} = ecpool_worker:client(gproc_pool:pick_worker({ecpool, ?PID})),
-    case eldap:search(Pid, [{base, ?AUTHDN},
+
+    %% add origanization unit info
+    eldap:add(Pid, ?DeviceDN,
+              [{"objectclass", ["organizationalUnit"]},
+               {"ou", ["test_device"]}]),
+
+    eldap:add(Pid, "uid=plain," ++ ?DeviceDN,
+              [{"uid", ["plain"]},
+               {"objectclass", ["mqttUser"]},
+               {"userPassword", ["{plain}plain"]}]),
+
+    eldap:add(Pid, "cn=actorcloud," ++ ?DeviceDN,
+              [{"cn", ["actorcloud"]},
+               {"objectclass", ["eMQTT"]},
+               {"uid", ["md5"]},
+               {"userPassword", ["{md5}1bc29b36f623ba82aaf6724fd3b16718"]}]),
+
+    eldap:add(Pid, "cn=mqtt," ++ ?DeviceDN,
+              [{"cn", ["mqtt"]},
+               {"objectclass", ["eMQTT"]},
+               {"uid", ["sha"]}, 
+               {"userPassword", ["{sha}d8f4590320e1343a915b6394170650a8f35d6926"]}]),
+    eldap:add(Pid, "cn=test," ++ ?DeviceDN,
+              [{"cn", ["test"]},
+               {"objectclass", ["eMQTT"]},
+               {"uid", ["sha256"]}, 
+               {"userPassword", ["{sha256}5d5b09f6dcb2d53a5fffc60c4ac0d55fabdf556069d6631545f42aa6e3500f2e"]}]).
+
+clean_auth(Pid) ->
+    case eldap:search(Pid, [{base, ?AuthDN},
                             {filter, eldap:present("objectclass")},
                             {scope, eldap:wholeSubtree()}])
     of
@@ -121,13 +132,13 @@ check_auth(_) ->
     Md5 = #{client_id => <<"md5">>, username => <<"md5">>},
     Sha = #{client_id => <<"sha">>, username => <<"sha">>},
     Sha256 = #{client_id => <<"sha256">>, username => <<"sha256">>},
-    reload([{password_hash, plain}]),
+
     ok = emqx_access_control:authenticate(Plain, <<"plain">>),
-    reload([{password_hash, md5}]),
+
     ok  = emqx_access_control:authenticate(Md5, <<"md5">>),
-    reload([{password_hash, sha}]),
+
     ok = emqx_access_control:authenticate(Sha, <<"sha">>),
-    reload([{password_hash, sha256}]),
+
     ok = emqx_access_control:authenticate(Sha256, <<"sha256">>).
 
 list_auth(_Config) ->
@@ -135,7 +146,6 @@ list_auth(_Config) ->
     emqx_auth_username:add_user(<<"user1">>, <<"password1">>),
     User1 = #{client_id => <<"client1">>, username => <<"user1">>},
     ok = emqx_access_control:authenticate(User1, <<"password1">>),
-    reload([{password_hash, plain}]),
     Plain = #{client_id => <<"client1">>, username => <<"plain">>},
     ok = emqx_access_control:authenticate(Plain, <<"plain">>),
     application:stop(emqx_auth_username).
@@ -145,11 +155,6 @@ comment_config(_) ->
     [application:unset_env(?APP, Par) || Par <- [auth_dn]],
     application:start(?APP),
     ?assertEqual([], emqx_access_control:lookup_mods(auth)).
-
-reload(Config) when is_list(Config) ->
-    application:stop(?APP),
-    [application:set_env(?APP, K, V) || {K, V} <- Config],
-    application:start(?APP).
 
 start_apps(App, SchemaFile, ConfigFile) ->
     read_schema_configs(App, SchemaFile, ConfigFile),
@@ -168,9 +173,7 @@ set_special_configs(emqx) ->
     application:set_env(emqx, allow_anonymous, false),
     application:set_env(emqx, enable_acl_cache, false),
     application:set_env(emqx, plugins_loaded_file, deps_path(emqx, "test/emqx_SUITE_data/loaded_plugins"));
-set_special_configs(emqx_auth_ldap) ->
-    application:set_env(emqx_auth_ldap, auth_dn, ?TESTAUTHDN),
-    application:set_env(emqx_auth_ldap, acl_dn, ?TESTACLDN);
+
 set_special_configs(_App) ->
     ok.
 

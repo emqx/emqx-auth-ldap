@@ -22,7 +22,7 @@
 
 -import(proplists, [get_value/2, get_value/3]).
 
--export([connect/1, search/2, fill/2, gen_filter/2]).
+-export([connect/1, search/2, search/3]).
 
 fill(#{client_id := ClientId, username := Username}, AuthDn) ->
     case re:run(AuthDn, "%[uc]", [global, {capture, all, list}]) of
@@ -51,17 +51,17 @@ connect(Opts) ->
     Timeout      = get_value(timeout, Opts, 30),
     BindDn       = get_value(bind_dn, Opts),
     BindPassword = get_value(bind_password, Opts),
-    LdapOpts = case get_value(ssl, Opts, false) of
-        true ->
-            SslOpts = get_value(sslopts, Opts),
-            [{port, Port}, {timeout, Timeout}, {sslopts, SslOpts}];
-        false ->
-            [{port, Port}, {timeout, Timeout}]
-    end,
-
-    case eldap:open(Servers, LdapOpts) of
+    LdapOpts     = case get_value(ssl, Opts, false) of
+                       true ->
+                           SslOpts = get_value(sslopts, Opts),
+                           [{port, Port}, {timeout, Timeout}, {sslopts, SslOpts}];
+                       false ->
+                           [{port, Port}, {timeout, Timeout}]
+                   end,
+    logger:debug("Connecting to OpenLDAP server: ~p, Opts:~p ...", [Servers, LdapOpts]),
+    case eldap2:open(Servers, LdapOpts) of
         {ok, LDAP} ->
-            try eldap:simple_bind(LDAP, BindDn, BindPassword) of
+            try eldap2:simple_bind(LDAP, BindDn, BindPassword) of
                 ok -> 
                     {ok, LDAP};
                 {error, Error} ->
@@ -75,5 +75,16 @@ connect(Opts) ->
     end.
 
 search(Base, Filter) ->
-    ecpool:with_client(?APP, fun(C) -> eldap:search(C, [{base, Base}, {filter, Filter}]) end).
+    ecpool:with_client(?APP, fun(C) -> 
+        eldap2:search(C, [{base, Base}, 
+                         {filter, Filter},
+                         {deref, eldap2:derefFindingBaseObj()}]) 
+    end).
 
+search(Base, Filter, Attributes) ->
+    ecpool:with_client(?APP, fun(C) -> 
+                                 eldap2:search(C, [{base, Base}, 
+                                                   {filter, Filter},
+                                                   {attributes, Attributes},
+                                                   {deref, eldap2:derefFindingBaseObj()}]) 
+                             end).

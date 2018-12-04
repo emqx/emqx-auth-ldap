@@ -19,57 +19,60 @@
 -include_lib("emqx/include/emqx.hrl").
 -include_lib("eldap/include/eldap.hrl").
 
--import(proplists, [get_value/2]).
--import(emqx_auth_ldap_cli, [search/2, fill/2, gen_filter/2]).
-
 %% ACL Callbacks
 -export([init/1, check_acl/2, reload_acl/1, description/0]).
 
-init(AclDn) ->
-    {ok, #{acl_dn => AclDn}}.
+-import(proplists, [get_value/2]).
+
+-import(lists, [concat/1]).
+
+-import(emqx_auth_ldap_cli, [search/2, search/3]).
+
+init(DeviceDn) ->
+    {ok, #{device_dn => DeviceDn}}.
 
 check_acl({#{username := <<$$, _/binary>>}, _PubSub, _Topic}, _State) ->
     ignore;
 
-check_acl({Credentials, PubSub, Topic}, #{acl_dn := AclDn}) ->
-    Filter = gen_filter(Credentials, AclDn),
-    case search(fill(Credentials, AclDn), Filter) of
+check_acl({_Credentials = #{username := Username}, PubSub, Topic}, #{device_dn := DeviceDn}) ->
+    Filter = eldap2:equalityMatch("objectClass", "uiotMQTT"),
+    Attribute = case PubSub of
+                    publish   -> "mqttPublishTopic";
+                    subscribe -> "mqttSubscriptionTopic"
+                end,
+    logger:debug("search dn:~p filter:~p, attribute:~p", [DeviceDn, Filter, Attribute]),
+    case search(concat(["uid=", binary_to_list(Username), ",", DeviceDn]), Filter, [Attribute]) of
+        {error, noSuchObject} ->
+            ignore;
         {ok, #eldap_search_result{entries = []}} ->
             ignore;
         {ok, #eldap_search_result{entries = [Entry]}} ->
-            Rules = filter(PubSub, compile(Entry#eldap_entry.attributes)),
-            case match(Credentials, Topic, Rules) of
-                {matched, allow} -> allow;
-                {matched, deny}  -> deny;
-                nomatch          -> ignore
-            end
+            Topics = get_value(Attribute, Entry#eldap_entry.attributes),
+            match(Topic, Topics);
+        Error ->
+            logger:error("LDAP search error:~p", [Error]),
+            deny
     end.
 
-match(_Credentials, _Topic, []) ->
+match(_Topic, []) ->
     nomatch;
 
-match(Credentials, Topic, [Rule|Rules]) ->
-    case emqx_access_rule:match(Credentials, Topic, Rule) of
-        nomatch -> match(Credentials, Topic, Rules);
-        {matched, AllowDeny} -> {matched, AllowDeny}
+match(Topic, [Filter | Topics]) ->
+    case emqx_topic:match(Topic, list_to_binary(Filter)) of
+        true  -> allow;
+        false -> match(Topic, Topics)
     end.
 
-compile(Attributes) ->
-    Topic = list_to_binary(get_value("topic", Attributes)),
-    Allow  = allow(list_to_binary(get_value("allow", Attributes))),
-    Access = access(list_to_binary(get_value("access", Attributes))),
-    [emqx_access_rule:compile({Allow, all, Access, [topic(Topic)]})].
+%% compile(Attributes) ->
+%%     Topic = list_to_binary(get_value("topic", Attributes)),
+%%     Allow  = allow(list_to_binary(get_value("allow", Attributes))),
+%%     Access = access(list_to_binary(get_value("access", Attributes))),
+%%     [emqx_access_rule:compile({Allow, all, Access, [topic(Topic)]})].
 
 filter(PubSub, Rules) ->
     [Term || Term = {_, _, Access, _} <- Rules,
              Access =:= PubSub orelse Access =:= pubsub].
 
-allow(<<"1">>)  -> allow;
-allow(<<"0">>)  -> deny.
-
-access(<<"1">>) -> subscribe;
-access(<<"2">>) -> publish;
-access(<<"3">>) -> pubsub.
 
 topic(<<"eq ", Topic/binary>>) ->
     {eq, Topic};

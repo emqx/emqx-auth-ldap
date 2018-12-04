@@ -23,31 +23,39 @@
 
 start(_StartType, _StartArgs) ->
     {ok, Sup} = emqx_auth_ldap_sup:start_link(),
-    if_enabled(auth_dn, fun reg_authmod/1),
-    if_enabled(acl_dn,  fun reg_aclmod/1),
-    emqx_auth_ldap_cfg:register(),
+    if_enabled([device_dn, objectclass], fun reg_authmod/1),
+    if_enabled([device_dn, objectclass], fun reg_aclmod/1),
     {ok, Sup}.
 
 prep_stop(State) ->
     emqx_access_control:unregister_mod(auth, emqx_auth_ldap),
     emqx_access_control:unregister_mod(acl, emqx_acl_ldap),
-    emqx_auth_ldap_cfg:unregister(),
     State.
 
 stop(_State) ->
     ok.
 
-reg_authmod(AuthDn) ->
-    {ok, HashType} = application:get_env(?APP, password_hash),
-    AuthEnv = {AuthDn, HashType},
-    emqx_access_control:register_mod(auth, emqx_auth_ldap, AuthEnv).
+reg_authmod(DeviceDn) ->
+    emqx_access_control:register_mod(auth, emqx_auth_ldap, DeviceDn).
 
-reg_aclmod(AclDn) ->
-    emqx_access_control:register_mod(acl, emqx_acl_ldap, AclDn).
+reg_aclmod(DeviceDn) ->
+    emqx_access_control:register_mod(acl, emqx_acl_ldap, DeviceDn).
 
-if_enabled(Cfg, Fun) ->
-    case application:get_env(?APP, Cfg) of
-        {ok, Dn} -> Fun(Dn);
-        undefined -> ok
+if_enabled(Cfgs, Fun) ->
+    case get_env(Cfgs) of
+        {ok, InitArgs} -> Fun(InitArgs);
+        [] -> ok
     end.
 
+get_env(Cfgs) ->
+   get_env(Cfgs, []).
+
+get_env([Cfg | LeftCfgs], ENVS) ->
+    case application:get_env(?APP, Cfg) of
+        {ok, ENV} ->
+            get_env(LeftCfgs, [{Cfg, ENV} | ENVS]);
+        undefined ->
+            get_env(LeftCfgs, ENVS)
+    end;
+get_env([], ENVS) ->
+   {ok, ENVS}.
