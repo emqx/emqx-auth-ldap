@@ -24,23 +24,6 @@
 
 -export([connect/1, search/2, search/3]).
 
-fill(#{client_id := ClientId, username := Username}, AuthDn) ->
-    case re:run(AuthDn, "%[uc]", [global, {capture, all, list}]) of
-        {match, [["%u"]]} ->
-            re:replace(AuthDn, "%u", binary_to_list(Username), [global, {return, list}]);
-        {match, [["%c"]]} ->
-            re:replace(AuthDn, "%c", binary_to_list(ClientId), [global, {return, list}]);
-        nomatch ->
-            AuthDn
-    end.
-
-gen_filter(#{client_id := ClientId, username := Username}, Dn) ->
-    case re:run(Dn, "%[uc]", [global, {capture, all, list}]) of
-        {match, [["%u"]]} -> eldap:equalityMatch("username", Username);
-        {match, [["%c"]]} -> eldap:equalityMatch("username", ClientId);
-        nomatch           -> eldap:equalityMatch("username", Username)
-    end.
-
 %%--------------------------------------------------------------------
 %% LDAP Connect/Search
 %%--------------------------------------------------------------------
@@ -83,7 +66,7 @@ search(Base, Filter) ->
 
 search(Base, Filter, Attributes) ->
     ecpool:with_client(?APP, fun(C) -> 
-                                 eldap2:search(C, [{base, Base}, 
+                                 eldap2:search(C, [{base, Base},
                                                    {filter, Filter},
                                                    {attributes, Attributes},
                                                    {deref, eldap2:derefFindingBaseObj()}]) 

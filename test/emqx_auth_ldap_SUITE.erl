@@ -52,23 +52,26 @@ init_per_suite(Config) ->
     dbg:tpl(emqx_auth_ldap_cli, gen_filter, x),
     dbg:tpl(emqx_auth_ldap_cli, fill, x),
     dbg:tpl(eldap, search, x),
+    dbg:tpl(emqx_auth_ldap_SUITE, start_apps,x),
+
     [start_apps(App, SchemaFile, ConfigFile) ||
         {App, SchemaFile, ConfigFile}
             <- [{emqx, deps_path(emqx, "priv/emqx.schema"),
                        deps_path(emqx, "etc/emqx.conf")},
                 {emqx_auth_ldap, local_path("priv/emqx_auth_ldap.schema"),
                                  local_path("etc/emqx_auth_ldap.conf")}]],
-    prepare(),
+    %% prepare(),
     Config.
 
 end_per_suite(_Config) ->
     clean(),
     [application:stop(App) || App <- [emqx_auth_ldap, emqx]].
 
-prepare() ->
-    {ok, Pid} = ecpool_worker:client(gproc_pool:pick_worker({ecpool, ?PID})),
-    init_acl(Pid),
-    init_auth(Pid).
+%% prepare() ->
+%%     {ok, Pid} = ecpool_worker:client(gproc_pool:pick_worker({ecpool, ?PID})),
+%%     init_acl(Pid),
+%%     init_auth(Pid)
+        
 
 clean() ->
     {ok, Pid} = ecpool_worker:client(gproc_pool:pick_worker({ecpool, ?PID})),
