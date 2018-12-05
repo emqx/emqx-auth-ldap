@@ -2,19 +2,17 @@ PROJECT = emqx_auth_ldap
 PROJECT_DESCRIPTION = EMQ X Authentication/ACL with LDAP
 PROJECT_VERSION = 3.0
 
-LOCAL_DEPS = eldap
-
-DEPS = ecpool clique emqx_passwd
+DEPS = ecpool clique emqx_passwd eldap2
+dep_eldap2     = git-emqx https://github.com/emqx/eldap2 eldap2
 dep_ecpool      = git-emqx https://github.com/emqx/ecpool master
 dep_clique      = git-emqx https://github.com/emqx/clique develop
 dep_emqx_passwd = git-emqx https://github.com/emqx/emqx-passwd emqx30
 
-BUILD_DEPS = emqx cuttlefish eldap2
+BUILD_DEPS = emqx cuttlefish
 dep_emqx       = git-emqx https://github.com/emqx/emqx emqx30
 dep_cuttlefish = git-emqx https://github.com/emqx/cuttlefish v2.1.1
-dep_eldap2     = git-emqx https://github.com/emqx/eldap2 eldap2
 
-NO_AUTOPATCH = cuttlefish
+NO_AUTOPATCH = cuttlefish eldap2
 
 ERLC_OPTS += +debug_info
 
