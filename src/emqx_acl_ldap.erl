@@ -26,7 +26,7 @@
 
 -import(lists, [concat/1]).
 
--import(emqx_auth_ldap_cli, [search/2, search/3]).
+-import(emqx_auth_ldap_cli, [search/3]).
 
 init(ENVS) ->
     DeviceDn = get_value(device_dn, ENVS, "ou=device,ou=Auth,ou=MQ,dc=emqx,dc=io"),
@@ -37,8 +37,8 @@ init(ENVS) ->
 check_acl({#{username := <<$$, _/binary>>}, _PubSub, _Topic}, _State) ->
     ignore;
 
-check_acl({_Credentials = #{username := Username}, PubSub, Topic}, #{device_dn := DeviceDn,
-                                                                     objectclass := ObjectClass}) ->
+check_acl({#{username := Username}, PubSub, Topic}, #{device_dn := DeviceDn,
+                                                      objectclass := ObjectClass}) ->
     Filter = eldap2:equalityMatch("objectClass", ObjectClass),
     Attribute = case PubSub of
                     publish   -> "mqttPublishTopic";
@@ -59,7 +59,7 @@ check_acl({_Credentials = #{username := Username}, PubSub, Topic}, #{device_dn :
     end.
 
 match(_Topic, []) ->
-    nomatch;
+    ignore;
 
 match(Topic, [Filter | Topics]) ->
     case emqx_topic:match(Topic, list_to_binary(Filter)) of

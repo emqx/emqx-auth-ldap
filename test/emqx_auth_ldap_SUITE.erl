@@ -34,131 +34,55 @@
 
 all() ->
     [
-     {group, emqx_auth_ldap_auth}
-     %% {group, emqx_auth_ldap}
+     check_auth,
+     check_acl
     ].
 
-groups() ->
-    [{emqx_auth_ldap_auth, [sequence], [check_auth, list_auth]},
-     {emqx_auth_ldap, [sequence], [comment_config]}].
-
 init_per_suite(Config) ->
-    dbg:start(),
-    dbg:tracer(),
-    dbg:p(all, c),
-    dbg:tpl(eldap, add, x),
-    dbg:tpl(emqx_access_control, authenticate, x),
-    dbg:tpl(emqx_auth_ldap, check, x),
-    dbg:tpl(emqx_auth_ldap_cli, gen_filter, x),
-    dbg:tpl(emqx_auth_ldap_cli, fill, x),
-    dbg:tpl(eldap, search, x),
-    dbg:tpl(emqx_auth_ldap_SUITE, start_apps,x),
-
     [start_apps(App, SchemaFile, ConfigFile) ||
         {App, SchemaFile, ConfigFile}
             <- [{emqx, deps_path(emqx, "priv/emqx.schema"),
                        deps_path(emqx, "etc/emqx.conf")},
                 {emqx_auth_ldap, local_path("priv/emqx_auth_ldap.schema"),
                                  local_path("etc/emqx_auth_ldap.conf")}]],
-    %% prepare(),
     Config.
 
 end_per_suite(_Config) ->
-    clean(),
     [application:stop(App) || App <- [emqx_auth_ldap, emqx]].
 
-%% prepare() ->
-%%     {ok, Pid} = ecpool_worker:client(gproc_pool:pick_worker({ecpool, ?PID})),
-%%     init_acl(Pid),
-%%     init_auth(Pid)
-        
-
-clean() ->
-    {ok, Pid} = ecpool_worker:client(gproc_pool:pick_worker({ecpool, ?PID})),
-    clean_acl(Pid),
-    clean_auth(Pid).
-
-init_acl(_Pid) ->
-    ok.
-
-clean_acl(Pid) ->
-    %% {ok, _Pid} = ecpool_worker:client(gproc_pool:pick_worker({ecpool, ?PID})).
-    ok.
-
-init_auth(Pid) ->
-    %% add origanization info
-    eldap:add(Pid, "dc=emqx,dc=io",
-                   [{"objectclass", ["dcObject", "organization"]},
-                    {"dc", ["emqx"]}, {"o", ["emqx,Inc."]}]),
-
-
-    %% add origanization unit info
-    eldap:add(Pid, ?DeviceDN,
-              [{"objectclass", ["organizationalUnit"]},
-               {"ou", ["test_device"]}]),
-
-    eldap:add(Pid, "uid=plain," ++ ?DeviceDN,
-              [{"uid", ["plain"]},
-               {"objectclass", ["mqttUser"]},
-               {"userPassword", ["{plain}plain"]}]),
-
-    eldap:add(Pid, "cn=actorcloud," ++ ?DeviceDN,
-              [{"cn", ["actorcloud"]},
-               {"objectclass", ["eMQTT"]},
-               {"uid", ["md5"]},
-               {"userPassword", ["{md5}1bc29b36f623ba82aaf6724fd3b16718"]}]),
-
-    eldap:add(Pid, "cn=mqtt," ++ ?DeviceDN,
-              [{"cn", ["mqtt"]},
-               {"objectclass", ["eMQTT"]},
-               {"uid", ["sha"]}, 
-               {"userPassword", ["{sha}d8f4590320e1343a915b6394170650a8f35d6926"]}]),
-    eldap:add(Pid, "cn=test," ++ ?DeviceDN,
-              [{"cn", ["test"]},
-               {"objectclass", ["eMQTT"]},
-               {"uid", ["sha256"]}, 
-               {"userPassword", ["{sha256}5d5b09f6dcb2d53a5fffc60c4ac0d55fabdf556069d6631545f42aa6e3500f2e"]}]).
-
-clean_auth(Pid) ->
-    case eldap:search(Pid, [{base, ?AuthDN},
-                            {filter, eldap:present("objectclass")},
-                            {scope, eldap:wholeSubtree()}])
-    of
-        {ok, {eldap_search_result, Entries, _}} ->
-            [ok = eldap:delete(Pid, Entry) || {eldap_entry, Entry, _} <- Entries];
-        _ -> ignore
-    end,
-    ok.
-
 check_auth(_) ->
-    Plain = #{client_id => <<"plain">>, username => <<"plain">>},
-    Md5 = #{client_id => <<"md5">>, username => <<"md5">>},
-    Sha = #{client_id => <<"sha">>, username => <<"sha">>},
-    Sha256 = #{client_id => <<"sha256">>, username => <<"sha256">>},
+    MqttUser1 = #{client_id => <<"mqttuser1">>, username => <<"mqttuser0001">>},
+    MqttUser2 = #{client_id => <<"mqttuser2">>, username => <<"mqttuser0002">>},
+    MqttUser3 = #{client_id => <<"mqttuser3">>, username => <<"mqttuser0003">>},
+    MqttUser4 = #{client_id => <<"mqttuser4">>, username => <<"mqttuser0004">>},
+    MqttUser5 = #{client_id => <<"mqttuser5">>, username => <<"mqttuser0005">>},
+    NonExistUser1 = #{client_id => <<"mqttuser6">>, username => <<"mqttuser0006">>},
+    NonExistUser2 = #{client_id => <<"mqttuser7">>, username => <<"mqttuser0005">>},
 
-    ok = emqx_access_control:authenticate(Plain, <<"plain">>),
+    ok = emqx_access_control:authenticate(MqttUser1, <<"mqttuser0001">>),
 
-    ok  = emqx_access_control:authenticate(Md5, <<"md5">>),
+    ok = emqx_access_control:authenticate(MqttUser2, <<"mqttuser0002">>),
 
-    ok = emqx_access_control:authenticate(Sha, <<"sha">>),
+    ok = emqx_access_control:authenticate(MqttUser3, <<"mqttuser0003">>),
 
-    ok = emqx_access_control:authenticate(Sha256, <<"sha256">>).
+    ok = emqx_access_control:authenticate(MqttUser4, <<"mqttuser0004">>),
 
-list_auth(_Config) ->
-    application:start(emqx_auth_username),
-    emqx_auth_username:add_user(<<"user1">>, <<"password1">>),
-    User1 = #{client_id => <<"client1">>, username => <<"user1">>},
-    ok = emqx_access_control:authenticate(User1, <<"password1">>),
-    Plain = #{client_id => <<"client1">>, username => <<"plain">>},
-    ok = emqx_access_control:authenticate(Plain, <<"plain">>),
-    application:stop(emqx_auth_username).
+    ok = emqx_access_control:authenticate(MqttUser5, <<"mqttuser0005">>),
+    
+    {error, auth_modules_not_found} = emqx_access_control:authenticate(NonExistUser1, <<"mqttuser0006">>),
 
-comment_config(_) ->
-    application:stop(?APP),
-    [application:unset_env(?APP, Par) || Par <- [auth_dn]],
-    application:start(?APP),
-    ?assertEqual([], emqx_access_control:lookup_mods(auth)).
+    {error, password_error} = emqx_access_control:authenticate(NonExistUser2, <<"mqttuser0006">>).
 
+check_acl(_) ->
+    MqttUser = #{client_id => <<"mqttuser1">>, username => <<"mqttuser0001">>, zone => undefined},
+    NoMqttUser = #{client_id => <<"mqttuser2">>, username => <<"mqttuser0007">>, zone => undefined},
+    allow = emqx_access_control:check_acl(MqttUser, publish, <<"/oneM2M/req/mqttuser0001/+">>),
+    allow = emqx_access_control:check_acl(MqttUser, subscribe, <<"/oneM2M/req/+/mqttuser0001">>),
+    deny = emqx_access_control:check_acl(NoMqttUser, publish, <<"/oneM2M/req/mqttuser0001/+">>),
+    deny = emqx_access_control:check_acl(MqttUser, publish, <<"/oneM2M/req/mqttuser0002/+">>),
+    deny = emqx_access_control:check_acl(MqttUser, subscribe, <<"/oneM2M/req/+/mqttuser0002">>),
+    ok.
+    
 start_apps(App, SchemaFile, ConfigFile) ->
     read_schema_configs(App, SchemaFile, ConfigFile),
     set_special_configs(App),
@@ -175,8 +99,11 @@ read_schema_configs(App, SchemaFile, ConfigFile) ->
 set_special_configs(emqx) ->
     application:set_env(emqx, allow_anonymous, false),
     application:set_env(emqx, enable_acl_cache, false),
+    application:set_env(emqx, acl_nomatch, deny),
     application:set_env(emqx, plugins_loaded_file, deps_path(emqx, "test/emqx_SUITE_data/loaded_plugins"));
 
+set_special_configs(emqx_auth_ldap) ->
+    application:set_env(emqx_auth_ldap, device_dn, "ou=testdevice, dc=emqx, dc=io");
 set_special_configs(_App) ->
     ok.
 

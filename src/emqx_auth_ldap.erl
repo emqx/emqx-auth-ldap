@@ -48,9 +48,9 @@ check(#{username := Username}, Password, #{device_dn   := DeviceDn,
     
 handle_attributes(Attributes, Password) ->
     fun(DeviceDn, Username) ->
-        logger:error("LDAP Search dn: ~p, uid: ~p, result:~p", [DeviceDn, Username, Attributes]),
         case get_value("userPassword", Attributes) of
             undefined ->
+                logger:error("LDAP Search dn: ~p, uid: ~p, result:~p", [DeviceDn, Username, Attributes]),
                 ok;
             [Passhash1] ->
                 do_format_password(Passhash1, Password)
@@ -110,6 +110,7 @@ handle_passhash(HandleMatch, HandleNoMatch) ->
     fun(Passhash, Password) ->
             case re:run(Passhash, "(?<={)[^{}]+(?=})", [{capture, all, list}, global]) of
                 {match, [[HashType]]} ->
+                    io:format("~n Passhash:~p HashType:~p ~n", [Passhash, HashType]),
                     HandleMatch(list_to_atom(string:to_lower(HashType)), Passhash, Password);
                 _ ->
                     HandleNoMatch(Passhash, Password)
@@ -119,10 +120,10 @@ handle_passhash(HandleMatch, HandleNoMatch) ->
 do_resolve(ssha, Passhash, Password) ->
     D64 = base64:decode(Passhash),
     {HashedData, Salt} = lists:split(20, binary_to_list(D64)),
-    NewHash = crypto:hash(sha, list_to_binary(Password ++ Salt)),
+    NewHash = crypto:hash(sha, <<Password/binary, (list_to_binary(Salt))/binary>>),
     {list_to_binary(HashedData), NewHash};
 do_resolve(HashType, Passhash, Password) ->
     Password1 = base64:encode(crypto:hash(HashType, Password)),
-    {list_to_binary(Passhash), binary_to_list(Password1)}.
+    {list_to_binary(Passhash), Password1}.
 
 description() -> "LDAP Authentication Plugin".

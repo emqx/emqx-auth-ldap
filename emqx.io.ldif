@@ -76,7 +76,7 @@ mqttPublishTopic: /oneM2M/reg_req/emqxIoT/+
 mqttSubscriptionTopic: /oneM2M/req/+/emqxIoT'''
 mqttSubscriptionTopic: /oneM2M/resp/+/emqxIoT
 mqttSubscriptionTopic: /oneM2M/reg_req/+/emqxIoT
-userPassword:: e01ENX1YMDNNTzFxblpkWWRneWZldUlMUG1RPT0=
+userPassword:: e01ENX15YnNQR29hSzNuRHlpUXZ2ZWlDT0l3PT0=
 
 ## create user mqttuser0004
 #         password=mqttuser0004,
@@ -89,9 +89,9 @@ objectClass: mqttDevice
 objectClass: mqttSecurity
 uid: mqttuser0004
 isEnabled: TRUE
-mqttPublishTopic: /nonOneM2M/req/C3288CDC8-non_onem2m_mqtt_asset/#
-mqttSubscriptionTopic: /nonOneM2M/resp/C3288CDC8-non_onem2m_mqtt_asset/#
-userPassword:: e01ENX1YMDNNTzFxblpkWWRneWZldUlMUG1RPT0=
+mqttPublishTopic: /nonOneM2M/req/mqttuser0004/#
+mqttSubscriptionTopic: /nonOneM2M/resp/mqttuser0004/#
+userPassword: {MD5}2Br6pPDSEDIEvUlu9+s+MA==
 
 ## create user mqttuser0005
 #         password=mqttuser0005,
@@ -106,5 +106,5 @@ uid: mqttuser0005
 isEnabled: TRUE
 mqttPublishTopic: /nonOneM2M/resp/#
 mqttSubscriptionTopic: /nonOneM2M/req/#
-userPassword:: e01ENX1YMDNNTzFxblpkWWRneWZldUlMUG1RPT0=
+userPassword: {SHA}jKnxeEDGR14kE8AR7yuVFOelhz4=
 
