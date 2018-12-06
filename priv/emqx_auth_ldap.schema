@@ -80,9 +80,21 @@
 end}.
 
 {mapping, "auth.ldap.device_dn", "emqx_auth_ldap.device_dn", [
+  {default, "ou=device,dc=emqx,dc=i"},
   {datatype, string}
 ]}.
 
-{mapping, "auth.ldap.objectclass", "emqx_auth_ldap.objectclass", [
+{mapping, "auth.ldap.match_objectclass", "emqx_auth_ldap.match_objectclass", [
+  {default, "mqttUser"},
+  {datatype, string}
+]}.
+
+{mapping, "auth.ldap.username.attributetype", "emqx_auth_ldap.username_attr", [
+  {default, "uid"},
+  {datatype, string}
+]}.
+
+{mapping, "auth.ldap.password.attributetype", "emqx_auth_ldap.password_attr", [
+  {default, "userPassword"},
   {datatype, string}
 ]}.

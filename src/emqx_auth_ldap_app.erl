@@ -23,8 +23,12 @@
 
 start(_StartType, _StartArgs) ->
     {ok, Sup} = emqx_auth_ldap_sup:start_link(),
-    if_enabled([device_dn, objectclass], fun reg_authmod/1),
-    if_enabled([device_dn, objectclass], fun reg_aclmod/1),
+    if_enabled([device_dn, match_objectclass,
+                username_attr, password_attr],
+               fun reg_authmod/1),
+    if_enabled([device_dn, match_objectclass,
+                username_attr, password_attr],
+               fun reg_aclmod/1),
     {ok, Sup}.
 
 prep_stop(State) ->

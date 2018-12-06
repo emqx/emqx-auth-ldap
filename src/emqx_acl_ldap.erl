@@ -22,36 +22,37 @@
 %% ACL Callbacks
 -export([init/1, check_acl/2, reload_acl/1, description/0]).
 
--import(proplists, [get_value/2, get_value/3]).
+-import(proplists, [get_value/2]).
 
 -import(lists, [concat/1]).
 
--import(emqx_auth_ldap_cli, [search/3]).
+-import(emqx_auth_ldap_cli, [search/3, init_args/1]).
 
 init(ENVS) ->
-    DeviceDn = get_value(device_dn, ENVS, "ou=device,ou=Auth,ou=MQ,dc=emqx,dc=io"),
-    ObjectClass = get_value(objectclass, ENVS, "mqttUser"),
-    {ok, #{device_dn => DeviceDn,
-           objectclass => ObjectClass}}.
+    init_args(ENVS).
 
 check_acl({#{username := <<$$, _/binary>>}, _PubSub, _Topic}, _State) ->
     ignore;
 
-check_acl({#{username := Username}, PubSub, Topic}, #{device_dn := DeviceDn,
-                                                      objectclass := ObjectClass}) ->
+check_acl({#{username := Username}, PubSub, Topic}, 
+          #{device_dn := DeviceDn,
+            match_objectclass := ObjectClass,
+            username_attr := UidAttr}) ->
     Filter = eldap2:equalityMatch("objectClass", ObjectClass),
     Attribute = case PubSub of
                     publish   -> "mqttPublishTopic";
                     subscribe -> "mqttSubscriptionTopic"
                 end,
+    Attribute1 = "mqttPubSubTopic",
     logger:debug("search dn:~p filter:~p, attribute:~p", [DeviceDn, Filter, Attribute]),
-    case search(concat(["uid=", binary_to_list(Username), ",", DeviceDn]), Filter, [Attribute]) of
+    case search(concat([UidAttr,"=", binary_to_list(Username), ",", DeviceDn]), Filter, [Attribute, Attribute1]) of
         {error, noSuchObject} ->
             ignore;
         {ok, #eldap_search_result{entries = []}} ->
             ignore;
         {ok, #eldap_search_result{entries = [Entry]}} ->
-            Topics = get_value(Attribute, Entry#eldap_entry.attributes),
+            Topics = get_value(Attribute, Entry#eldap_entry.attributes)
+                ++ get_value(Attribute1, Entry#eldap_entry.attributes),
             match(Topic, Topics);
         Error ->
             logger:error("LDAP search error:~p", [Error]),

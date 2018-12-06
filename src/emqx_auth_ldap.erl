@@ -19,47 +19,45 @@
 
 -behaviour(emqx_auth_mod).
 
--import(emqx_auth_ldap_cli, [search/2]).
+-import(proplists, [get_value/2]).
 
--import(proplists, [get_value/2, get_value/3]).
+-import(emqx_auth_ldap_cli, [search/2, init_args/1]).
 
 -export([init/1, check/3, description/0]).
 
 -define(UNDEFINED(Username), (Username =:= undefined orelse Username =:= <<>>)).
 
 init(ENVS) ->
-    DeviceDn = get_value(device_dn, ENVS, "ou=device,ou=Auth,ou=MQ,dc=emqx,dc=io"),
-    ObjectClass = get_value(objectclass, ENVS, "mqttUser"),
-    {ok, #{device_dn => DeviceDn,
-           objectclass => ObjectClass}}.
+    init_args(ENVS).
 
 check(#{username := Username}, _Password, _State) when ?UNDEFINED(Username) ->
     {error, username_undefined};
 
-check(#{username := Username}, Password, #{device_dn   := DeviceDn,
-                                           objectclass := ObjectClass}) ->
-    case lookup_user(DeviceDn, ObjectClass, Username) of
+check(#{username := Username}, Password, State) ->
+    case lookup_user(Username, State) of
         undefined -> ignore;
         {error, Error} -> {error, Error};
         Attributes ->
-            AttributesHandler = handle_attributes(Attributes, Password),
+            AttributesHandler = handle_attributes(Attributes, Password, State),
             AttributesHandler(Attributes, Password)
     end.
     
-handle_attributes(Attributes, Password) ->
+handle_attributes(Attributes, Password, #{password_attr := PasswdAttr}) ->
     fun(DeviceDn, Username) ->
-        case get_value("userPassword", Attributes) of
+        case get_value(PasswdAttr, Attributes) of
             undefined ->
                 logger:error("LDAP Search dn: ~p, uid: ~p, result:~p", [DeviceDn, Username, Attributes]),
                 ok;
             [Passhash1] ->
-                do_format_password(Passhash1, Password)
+                format_password(Passhash1, Password)
         end
     end.
 
-lookup_user(DeviceDn, ObjectClass, Uid) ->
+lookup_user(Username, #{username_attr := UidAttr,
+                        match_objectclass := ObjectClass,
+                        device_dn := DeviceDn}) ->
     Filter = eldap2:equalityMatch("objectClass", ObjectClass),
-    case search(lists:concat(["uid=", binary_to_list(Uid), ",", DeviceDn]), Filter) of
+    case search(lists:concat([UidAttr,"=", binary_to_list(Username), ",", DeviceDn]), Filter) of
         {error, noSuchObject} ->
             undefined;
         {ok, #eldap_search_result{entries = [Entry]}} ->
@@ -81,8 +79,8 @@ lookup_user(DeviceDn, ObjectClass, Uid) ->
 check_pass(Password, Password) -> ok;
 check_pass(_, _) -> {error, password_error}.
 
-do_format_password(Passhash, Password) ->
-    case format_password(Passhash, Password) of
+format_password(Passhash, Password) ->
+    case do_format_password(Passhash, Password) of
         {error, Error2} ->
             {error, Error2};
 
@@ -90,7 +88,7 @@ do_format_password(Passhash, Password) ->
             check_pass(Passhash1, Password1)
     end.
 
-format_password(Passhash, Password) ->
+do_format_password(Passhash, Password) ->
     Base64PasshashHandler = handle_passhash(fun(HashType, Passhash1, Password1) ->
                                                 Passhash2 = binary_to_list(base64:decode(Passhash1)),
                                                 resolve_passhash(HashType, Passhash2, Password1) 
