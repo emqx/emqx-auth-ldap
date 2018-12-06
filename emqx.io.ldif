@@ -1,0 +1,110 @@
+## create emqx.io
+
+dn:dc=emqx,dc=io
+objectclass: top
+objectclass: dcobject
+objectclass: organization
+dc:emqx
+o:emqx,Inc.
+
+# create testdevice.emqx.io
+dn:ou=testdevice,dc=emqx,dc=io
+objectClass: top
+objectclass:organizationalUnit
+ou:testdevice
+
+# create user admin
+dn:uid=admin,ou=testdevice,dc=emqx,dc=io
+objectClass: top
+objectClass: simpleSecurityObject
+objectClass: account
+userPassword:: e1NIQX1XNnBoNU1tNVB6OEdnaVVMYlBnekczN21qOWc9
+uid: admin
+
+## create user=mqttuser0001,
+#         password=mqttuser0001,
+#         passhash={SHA}mlb3fat40MKBTXUVZwCKmL73R/0=
+#         base64passhash=e1NIQX1tbGIzZmF0NDBNS0JUWFVWWndDS21MNzNSLzA9
+dn:uid=mqttuser0001,ou=testdevice,dc=emqx,dc=io
+objectClass: top
+objectClass: mqttUser
+objectClass: mqttDevice
+objectClass: mqttSecurity
+uid: mqttuser0001
+isEnabled: TRUE
+mqttPublishTopic: /oneM2M/req/mqttuser0001/+
+mqttPublishTopic: /oneM2M/resp/mqttuser0001/+
+mqttPublishTopic: /oneM2M/reg_req/mqttuser0001/+
+mqttSubscriptionTopic: /oneM2M/req/+/mqttuser0001
+mqttSubscriptionTopic: /oneM2M/resp/+/mqttuser0001
+mqttSubscriptionTopic: /oneM2M/reg_resp/+/mqttuser0001
+userPassword:: e1NIQX1tbGIzZmF0NDBNS0JUWFVWWndDS21MNzNSLzA9
+
+## create user=mqttuser0002
+#         password=mqttuser0002,
+#         passhash={SSHA}n9XdtoG4Q/TQ3TQF4Y+khJbMBH4qXj4M
+#         base64passhash=e1NTSEF9bjlYZHRvRzRRL1RRM1RRRjRZK2toSmJNQkg0cVhqNE0=
+dn:uid=mqttuser0002,ou=testdevice,dc=emqx,dc=io
+objectClass: top
+objectClass: mqttUser
+objectClass: mqttDevice
+objectClass: mqttSecurity
+uid: mqttuser0002
+isEnabled: TRUE
+mqttPublishTopic: /oneM2M/req/mqttuser0002/+
+mqttPublishTopic: /oneM2M/resp/mqttuser0002/+
+mqttPublishTopic: /oneM2M/reg_req/mqttuser0002/+
+mqttSubscriptionTopic: /oneM2M/req/+/mqttuser0002
+mqttSubscriptionTopic: /oneM2M/resp/+/mqttuser0002
+mqttSubscriptionTopic: /oneM2M/reg_resp/+/mqttuser0002
+userPassword:: e1NTSEF9bjlYZHRvRzRRL1RRM1RRRjRZK2toSmJNQkg0cVhqNE0=
+
+## create user mqttuser0003
+#         password=mqttuser0003,
+#         passhash={MD5}ybsPGoaK3nDyiQvveiCOIw==
+#         base64passhash=e01ENX15YnNQR29hSzNuRHlpUXZ2ZWlDT0l3PT0=
+dn:uid=mqttuser0003,ou=testdevice,dc=emqx,dc=io
+objectClass: top
+objectClass: mqttUser
+objectClass: mqttDevice
+objectClass: mqttSecurity
+uid: mqttuser0003
+isEnabled: TRUE
+mqttPublishTopic: /oneM2M/resp/emqxIoT/+
+mqttPublishTopic: /oneM2M/req/emqxIoT/+
+mqttPublishTopic: /oneM2M/reg_req/emqxIoT/+
+mqttSubscriptionTopic: /oneM2M/req/+/emqxIoT'''
+mqttSubscriptionTopic: /oneM2M/resp/+/emqxIoT
+mqttSubscriptionTopic: /oneM2M/reg_req/+/emqxIoT
+userPassword:: e01ENX1YMDNNTzFxblpkWWRneWZldUlMUG1RPT0=
+
+## create user mqttuser0004
+#         password=mqttuser0004,
+#         passhash={MD5}2Br6pPDSEDIEvUlu9+s+MA==
+#         base64passhash=e01ENX0yQnI2cFBEU0VESUV2VWx1OStzK01BPT0=
+dn:uid=mqttuser0004,ou=testdevice,dc=emqx,dc=io
+objectClass: top
+objectClass: mqttUser
+objectClass: mqttDevice
+objectClass: mqttSecurity
+uid: mqttuser0004
+isEnabled: TRUE
+mqttPublishTopic: /nonOneM2M/req/C3288CDC8-non_onem2m_mqtt_asset/#
+mqttSubscriptionTopic: /nonOneM2M/resp/C3288CDC8-non_onem2m_mqtt_asset/#
+userPassword:: e01ENX1YMDNNTzFxblpkWWRneWZldUlMUG1RPT0=
+
+## create user mqttuser0005
+#         password=mqttuser0005,
+#         passhash={SHA}jKnxeEDGR14kE8AR7yuVFOelhz4=
+#         base64passhash=e1NIQX1qS254ZUVER1IxNGtFOEFSN3l1VkZPZWxoejQ9
+objectClass: top
+dn:uid=mqttuser0005,ou=testdevice,dc=emqx,dc=io
+objectClass: mqttUser
+objectClass: mqttDevice
+objectClass: mqttSecurity
+uid: mqttuser0005
+isEnabled: TRUE
+mqttPublishTopic: /nonOneM2M/resp/#
+mqttSubscriptionTopic: /nonOneM2M/req/#
+userPassword:: e01ENX1YMDNNTzFxblpkWWRneWZldUlMUG1RPT0=
+

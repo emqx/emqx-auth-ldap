@@ -78,7 +78,7 @@ lookup_user(DeviceDn, ObjectClass, Uid) ->
             {error, username_or_password_error}
     end.
 
-check_pass(Passhash, Password) when Passhash =:= Password -> ok;
+check_pass(Password, Password) -> ok;
 check_pass(_, _) -> {error, password_error}.
 
 do_format_password(Passhash, Password) ->
@@ -95,24 +95,34 @@ format_password(Passhash, Password) ->
                                                 Passhash2 = binary_to_list(base64:decode(Passhash1)),
                                                 resolve_passhash(HashType, Passhash2, Password1) 
                                             end,
-                                            fun() -> {error, password_error} end),
+                                            fun(_Passhash, _Password) -> 
+                                                {error, password_error} 
+                                            end),
     PasshashHandler = handle_passhash(fun resolve_passhash/3,
                                       Base64PasshashHandler),
     PasshashHandler(Passhash, Password).
 
 resolve_passhash(HashType, Passhash, Password) ->
     [_, Passhash1] = string:tokens(Passhash, "}"),
-    Password1 = base64:encode(crypto:hash(list_to_atom(string:to_lower(HashType)), Password)),
-    {Passhash1, binary_to_list(Password1)}.
+    do_resolve(HashType, Passhash1, Password).
 
 handle_passhash(HandleMatch, HandleNoMatch) ->
     fun(Passhash, Password) ->
             case re:run(Passhash, "(?<={)[^{}]+(?=})", [{capture, all, list}, global]) of
                 {match, [[HashType]]} ->
-                    HandleMatch(HashType, Passhash, Password);
+                    HandleMatch(list_to_atom(string:to_lower(HashType)), Passhash, Password);
                 _ ->
-                    HandleNoMatch()
+                    HandleNoMatch(Passhash, Password)
             end
     end.
+
+do_resolve(ssha, Passhash, Password) ->
+    D64 = base64:decode(Passhash),
+    {HashedData, Salt} = lists:split(20, binary_to_list(D64)),
+    NewHash = crypto:hash(sha, list_to_binary(Password ++ Salt)),
+    {list_to_binary(HashedData), NewHash};
+do_resolve(HashType, Passhash, Password) ->
+    Password1 = base64:encode(crypto:hash(HashType, Password)),
+    {list_to_binary(Passhash), binary_to_list(Password1)}.
 
 description() -> "LDAP Authentication Plugin".
