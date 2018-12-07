@@ -22,7 +22,10 @@
 
 -import(proplists, [get_value/2, get_value/3]).
 
--export([connect/1, search/2, search/3, init_args/1]).
+%% ecpool callback
+-export([connect/1]).
+
+-export([search/2, search/3, init_args/1]).
 
 %%--------------------------------------------------------------------
 %% LDAP Connect/Search
