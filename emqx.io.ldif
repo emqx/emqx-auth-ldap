@@ -32,15 +32,15 @@ objectClass: mqttDevice
 objectClass: mqttSecurity
 uid: mqttuser0001
 isEnabled: TRUE
-mqttPublishTopic: /mqttuser0001/pub/1
-mqttPublishTopic: /mqttuser0001/pub/+
-mqttPublishTopic: /mqttuser0001/pub/#
-mqttSubscriptionTopic: /mqttuser0001/sub/1
-mqttSubscriptionTopic: /mqttuser0001/sub/+
-mqttSubscriptionTopic: /mqttuser0001/sub/#
-mqttPubSubTopic: /mqttuser0001/pubsub/1
-mqttPubSubTopic: /mqttuser0001/pubsub/+
-mqttPubSubTopic: /mqttuser0001/pubsub/#
+mqttPublishTopic: mqttuser0001/pub/1
+mqttPublishTopic: mqttuser0001/pub/+
+mqttPublishTopic: mqttuser0001/pub/#
+mqttSubscriptionTopic: mqttuser0001/sub/1
+mqttSubscriptionTopic: mqttuser0001/sub/+
+mqttSubscriptionTopic: mqttuser0001/sub/#
+mqttPubSubTopic: mqttuser0001/pubsub/1
+mqttPubSubTopic: mqttuser0001/pubsub/+
+mqttPubSubTopic: mqttuser0001/pubsub/#
 userPassword:: e1NIQX1tbGIzZmF0NDBNS0JUWFVWWndDS21MNzNSLzA9
 
 ## create user=mqttuser0002
@@ -54,15 +54,15 @@ objectClass: mqttDevice
 objectClass: mqttSecurity
 uid: mqttuser0002
 isEnabled: TRUE
-mqttPublishTopic: /mqttuser0002/pub/1
-mqttPublishTopic: /mqttuser0002/pub/+
-mqttPublishTopic: /mqttuser0002/pub/#
-mqttSubscriptionTopic: /mqttuser0002/sub/1
-mqttSubscriptionTopic: /mqttuser0002/sub/+
-mqttSubscriptionTopic: /mqttuser0002/sub/#
-mqttPubSubTopic: /mqttuser0002/pubsub/1
-mqttPubSubTopic: /mqttuser0002/pubsub/+
-mqttPubSubTopic: /mqttuser0002/pubsub/#
+mqttPublishTopic: mqttuser0002/pub/1
+mqttPublishTopic: mqttuser0002/pub/+
+mqttPublishTopic: mqttuser0002/pub/#
+mqttSubscriptionTopic: mqttuser0002/sub/1
+mqttSubscriptionTopic: mqttuser0002/sub/+
+mqttSubscriptionTopic: mqttuser0002/sub/#
+mqttPubSubTopic: mqttuser0002/pubsub/1
+mqttPubSubTopic: mqttuser0002/pubsub/+
+mqttPubSubTopic: mqttuser0002/pubsub/#
 userPassword:: e1NTSEF9bjlYZHRvRzRRL1RRM1RRRjRZK2toSmJNQkg0cVhqNE0=
 
 ## create user mqttuser0003
@@ -76,15 +76,15 @@ objectClass: mqttDevice
 objectClass: mqttSecurity
 uid: mqttuser0003
 isEnabled: TRUE
-mqttPublishTopic: /mqttuser0003/pub/1
-mqttPublishTopic: /mqttuser0003/pub/+
-mqttPublishTopic: /mqttuser0003/pub/#
-mqttSubscriptionTopic: /mqttuser0003/sub/1
-mqttSubscriptionTopic: /mqttuser0003/sub/+
-mqttSubscriptionTopic: /mqttuser0003/sub/#
-mqttPubSubTopic: /mqttuser0003/pubsub/1
-mqttPubSubTopic: /mqttuser0003/pubsub/+
-mqttPubSubTopic: /mqttuser0003/pubsub/#
+mqttPublishTopic: mqttuser0003/pub/1
+mqttPublishTopic: mqttuser0003/pub/+
+mqttPublishTopic: mqttuser0003/pub/#
+mqttSubscriptionTopic: mqttuser0003/sub/1
+mqttSubscriptionTopic: mqttuser0003/sub/+
+mqttSubscriptionTopic: mqttuser0003/sub/#
+mqttPubSubTopic: mqttuser0003/pubsub/1
+mqttPubSubTopic: mqttuser0003/pubsub/+
+mqttPubSubTopic: mqttuser0003/pubsub/#
 userPassword:: e01ENX15YnNQR29hSzNuRHlpUXZ2ZWlDT0l3PT0=
 
 ## create user mqttuser0004
@@ -98,15 +98,15 @@ objectClass: mqttDevice
 objectClass: mqttSecurity
 uid: mqttuser0004
 isEnabled: TRUE
-mqttPublishTopic: /mqttuser0004/pub/1
-mqttPublishTopic: /mqttuser0004/pub/+
-mqttPublishTopic: /mqttuser0004/pub/#
-mqttSubscriptionTopic: /mqttuser0004/sub/1
-mqttSubscriptionTopic: /mqttuser0004/sub/+
-mqttSubscriptionTopic: /mqttuser0004/sub/#
-mqttPubSubTopic: /mqttuser0004/pubsub/1
-mqttPubSubTopic: /mqttuser0004/pubsub/+
-mqttPubSubTopic: /mqttuser0004/pubsub/#
+mqttPublishTopic: mqttuser0004/pub/1
+mqttPublishTopic: mqttuser0004/pub/+
+mqttPublishTopic: mqttuser0004/pub/#
+mqttSubscriptionTopic: mqttuser0004/sub/1
+mqttSubscriptionTopic: mqttuser0004/sub/+
+mqttSubscriptionTopic: mqttuser0004/sub/#
+mqttPubSubTopic: mqttuser0004/pubsub/1
+mqttPubSubTopic: mqttuser0004/pubsub/+
+mqttPubSubTopic: mqttuser0004/pubsub/#
 userPassword: {MD5}2Br6pPDSEDIEvUlu9+s+MA==
 
 ## create user mqttuser0005
@@ -120,14 +120,14 @@ objectClass: mqttDevice
 objectClass: mqttSecurity
 uid: mqttuser0005
 isEnabled: TRUE
-mqttPublishTopic: /mqttuser0005/pub/1
-mqttPublishTopic: /mqttuser0005/pub/+
-mqttPublishTopic: /mqttuser0005/pub/#
-mqttSubscriptionTopic: /mqttuser0005/sub/1
-mqttSubscriptionTopic: /mqttuser0005/sub/+
-mqttSubscriptionTopic: /mqttuser0005/sub/#
-mqttPubSubTopic: /mqttuser0005/pubsub/1
-mqttPubSubTopic: /mqttuser0005/pubsub/+
-mqttPubSubTopic: /mqttuser0005/pubsub/#
+mqttPublishTopic: mqttuser0005/pub/1
+mqttPublishTopic: mqttuser0005/pub/+
+mqttPublishTopic: mqttuser0005/pub/#
+mqttSubscriptionTopic: mqttuser0005/sub/1
+mqttSubscriptionTopic: mqttuser0005/sub/+
+mqttSubscriptionTopic: mqttuser0005/sub/#
+mqttPubSubTopic: mqttuser0005/pubsub/1
+mqttPubSubTopic: mqttuser0005/pubsub/+
+mqttPubSubTopic: mqttuser0005/pubsub/#
 userPassword: {SHA}jKnxeEDGR14kE8AR7yuVFOelhz4=
 

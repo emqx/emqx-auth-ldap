@@ -76,24 +76,24 @@ check_auth(_) ->
 check_acl(_) ->
     MqttUser = #{client_id => <<"mqttuser1">>, username => <<"mqttuser0001">>, zone => undefined},
     NoMqttUser = #{client_id => <<"mqttuser2">>, username => <<"mqttuser0007">>, zone => undefined},
-    allow = emqx_access_control:check_acl(MqttUser, publish, <<"/mqttuser0001/pub/1">>),
-    allow = emqx_access_control:check_acl(MqttUser, publish, <<"/mqttuser0001/pub/+">>),
-    allow = emqx_access_control:check_acl(MqttUser, publish, <<"/mqttuser0001/pub/#">>),
+    allow = emqx_access_control:check_acl(MqttUser, publish, <<"mqttuser0001/pub/1">>),
+    allow = emqx_access_control:check_acl(MqttUser, publish, <<"mqttuser0001/pub/+">>),
+    allow = emqx_access_control:check_acl(MqttUser, publish, <<"mqttuser0001/pub/#">>),
 
-    allow = emqx_access_control:check_acl(MqttUser, subscribe, <<"/mqttuser0001/sub/1">>),
-    allow = emqx_access_control:check_acl(MqttUser, subscribe, <<"/mqttuser0001/sub/+">>),
-    allow = emqx_access_control:check_acl(MqttUser, subscribe, <<"/mqttuser0001/sub/#">>),
+    allow = emqx_access_control:check_acl(MqttUser, subscribe, <<"mqttuser0001/sub/1">>),
+    allow = emqx_access_control:check_acl(MqttUser, subscribe, <<"mqttuser0001/sub/+">>),
+    allow = emqx_access_control:check_acl(MqttUser, subscribe, <<"mqttuser0001/sub/#">>),
 
-    allow = emqx_access_control:check_acl(MqttUser, publish, <<"/mqttuser0001/pubsub/1">>),
-    allow = emqx_access_control:check_acl(MqttUser, publish, <<"/mqttuser0001/pubsub/+">>),
-    allow = emqx_access_control:check_acl(MqttUser, publish, <<"/mqttuser0001/pubsub/#">>),
-    allow = emqx_access_control:check_acl(MqttUser, subscribe, <<"/mqttuser0001/pubsub/1">>),
-    allow = emqx_access_control:check_acl(MqttUser, subscribe, <<"/mqttuser0001/pubsub/+">>),
-    allow = emqx_access_control:check_acl(MqttUser, subscribe, <<"/mqttuser0001/pubsub/#">>),
+    allow = emqx_access_control:check_acl(MqttUser, publish, <<"mqttuser0001/pubsub/1">>),
+    allow = emqx_access_control:check_acl(MqttUser, publish, <<"mqttuser0001/pubsub/+">>),
+    allow = emqx_access_control:check_acl(MqttUser, publish, <<"mqttuser0001/pubsub/#">>),
+    allow = emqx_access_control:check_acl(MqttUser, subscribe, <<"mqttuser0001/pubsub/1">>),
+    allow = emqx_access_control:check_acl(MqttUser, subscribe, <<"mqttuser0001/pubsub/+">>),
+    allow = emqx_access_control:check_acl(MqttUser, subscribe, <<"mqttuser0001/pubsub/#">>),
 
-    deny = emqx_access_control:check_acl(NoMqttUser, publish, <<"/mqttuser0001/req/mqttuser0001/+">>),
-    deny = emqx_access_control:check_acl(MqttUser, publish, <<"/mqttuser0001/req/mqttuser0002/+">>),
-    deny = emqx_access_control:check_acl(MqttUser, subscribe, <<"/mqttuser0001/req/+/mqttuser0002">>),
+    deny = emqx_access_control:check_acl(NoMqttUser, publish, <<"mqttuser0001/req/mqttuser0001/+">>),
+    deny = emqx_access_control:check_acl(MqttUser, publish, <<"mqttuser0001/req/mqttuser0002/+">>),
+    deny = emqx_access_control:check_acl(MqttUser, subscribe, <<"mqttuser0001/req/+/mqttuser0002">>),
     ok.
     
 start_apps(App, SchemaFile, ConfigFile) ->
