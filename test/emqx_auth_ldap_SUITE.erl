@@ -16,11 +16,15 @@
 
 -compile(export_all).
 
--define(POOL, emqx_auth_ldap).
+-compile(no_warning_export).
 
--define(APP, ?POOL).
+-define(PID, emqx_auth_ldap).
 
--define(AuthDN, "ou=test_auth,dc=emqtt,dc=com").
+-define(APP, emqx_auth_ldap).
+
+-define(DeviceDN, "ou=test_device,dc=emqx,dc=io").
+
+-define(AuthDN, "ou=test_auth,dc=emqx,dc=io").
 
 -include_lib("emqx/include/emqx.hrl").
 
@@ -29,132 +33,100 @@
 -include_lib("common_test/include/ct.hrl").
 
 all() ->
-    [{group, emqx_auth_ldap_auth},
-     {group, emqx_auth_ldap}].
-
-groups() ->
-    [{emqx_auth_ldap_auth, [sequence], [check_auth, list_auth]},
-     {emqx_auth_ldap, [sequence], [comment_config]}
+    [
+     check_auth,
+     check_acl
     ].
 
 init_per_suite(Config) ->
-    [start_apps(App) || App <- [emqx, emqx_auth_ldap]],
-    {ok, Handle} = ecpool_worker:client(gproc_pool:pick_worker({ecpool, ?POOL})),
-    cleanup(Handle),
-    prepare(Handle),
+    [start_apps(App, SchemaFile, ConfigFile) ||
+        {App, SchemaFile, ConfigFile}
+            <- [{emqx, deps_path(emqx, "priv/emqx.schema"),
+                       deps_path(emqx, "etc/emqx.conf")},
+                {emqx_auth_ldap, local_path("priv/emqx_auth_ldap.schema"),
+                                 local_path("etc/emqx_auth_ldap.conf")}]],
     Config.
 
 end_per_suite(_Config) ->
-    {ok, Handle} = ecpool_worker:client(gproc_pool:pick_worker({ecpool, ?POOL})),
-    cleanup(Handle),
     [application:stop(App) || App <- [emqx_auth_ldap, emqx]].
 
 check_auth(_) ->
-    Plain = #{client_id => <<"client1">>, username => <<"plain">>},
-    Md5 = #{client_id => <<"md5">>, username => <<"md5">>},
-    Sha = #{client_id => <<"sha">>, username => <<"sha">>},
-    Sha256 = #{client_id => <<"sha256">>, username => <<"sha256">>},
-    reload([{password_hash, plain}]),
-    ok = emqx_access_control:authenticate(Plain, <<"plain">>),
-    reload([{password_hash, md5}]),
-    ok  = emqx_access_control:authenticate(Md5, <<"md5">>),
-    reload([{password_hash, sha}]),
-    ok = emqx_access_control:authenticate(Sha, <<"sha">>),
-    reload([{password_hash, sha256}]),
-    ok = emqx_access_control:authenticate(Sha256, <<"sha256">>).
+    MqttUser1 = #{client_id => <<"mqttuser1">>, username => <<"mqttuser0001">>},
+    MqttUser2 = #{client_id => <<"mqttuser2">>, username => <<"mqttuser0002">>},
+    MqttUser3 = #{client_id => <<"mqttuser3">>, username => <<"mqttuser0003">>},
+    MqttUser4 = #{client_id => <<"mqttuser4">>, username => <<"mqttuser0004">>},
+    MqttUser5 = #{client_id => <<"mqttuser5">>, username => <<"mqttuser0005">>},
+    NonExistUser1 = #{client_id => <<"mqttuser6">>, username => <<"mqttuser0006">>},
+    NonExistUser2 = #{client_id => <<"mqttuser7">>, username => <<"mqttuser0005">>},
 
-list_auth(_Config) ->
-    application:start(emqx_auth_username),
-    emqx_auth_username:add_user(<<"user1">>, <<"password1">>),
-    User1 = #{client_id => <<"client1">>, username => <<"user1">>},
-    ok = emqx_access_control:authenticate(User1, <<"password1">>),
-    reload([{password_hash, plain}]),
-    Plain = #{client_id => <<"client1">>, username => <<"plain">>},
-    ok = emqx_access_control:authenticate(Plain, <<"plain">>),
-    application:stop(emqx_auth_username).
+    ok = emqx_access_control:authenticate(MqttUser1, <<"mqttuser0001">>),
 
-comment_config(_) ->
-    application:stop(?APP),
-    [application:unset_env(?APP, Par) || Par <- [auth_dn]],
-    application:start(?APP),
-    ?assertEqual([], emqx_access_control:lookup_mods(auth)).
+    ok = emqx_access_control:authenticate(MqttUser2, <<"mqttuser0002">>),
 
-reload(Config) when is_list(Config) ->
-    application:stop(?APP),
-    [application:set_env(?APP, K, V) || {K, V} <- Config],
-    application:start(?APP).
+    ok = emqx_access_control:authenticate(MqttUser3, <<"mqttuser0003">>),
 
-start_apps(App) ->
-    NewConfig = generate_config(App),
-    lists:foreach(fun set_app_env/1, NewConfig).
+    ok = emqx_access_control:authenticate(MqttUser4, <<"mqttuser0004">>),
 
-generate_config(emqx) ->
-    Schema = cuttlefish_schema:files([local_path(["deps", "emqx", "priv", "emqx.schema"])]),
-    Conf = conf_parse:file([local_path(["deps", "emqx", "etc", "emqx.conf"])]),
-    cuttlefish_generator:map(Schema, Conf);
+    ok = emqx_access_control:authenticate(MqttUser5, <<"mqttuser0005">>),
+    
+    {error, auth_modules_not_found} = emqx_access_control:authenticate(NonExistUser1, <<"mqttuser0006">>),
 
-generate_config(emqx_auth_ldap) ->
-    Schema = cuttlefish_schema:files([local_path(["priv", "emqx_auth_ldap.schema"])]),
-    Conf = conf_parse:file([local_path(["etc", "emqx_auth_ldap.conf"])]),
-    cuttlefish_generator:map(Schema, Conf).
+    {error, password_error} = emqx_access_control:authenticate(NonExistUser2, <<"mqttuser0006">>).
 
+check_acl(_) ->
+    MqttUser = #{client_id => <<"mqttuser1">>, username => <<"mqttuser0001">>, zone => undefined},
+    NoMqttUser = #{client_id => <<"mqttuser2">>, username => <<"mqttuser0007">>, zone => undefined},
+    allow = emqx_access_control:check_acl(MqttUser, publish, <<"mqttuser0001/pub/1">>),
+    allow = emqx_access_control:check_acl(MqttUser, publish, <<"mqttuser0001/pub/+">>),
+    allow = emqx_access_control:check_acl(MqttUser, publish, <<"mqttuser0001/pub/#">>),
 
-get_base_dir(Module) ->
-    {file, Here} = code:is_loaded(Module),
-    filename:dirname(filename:dirname(Here)).
+    allow = emqx_access_control:check_acl(MqttUser, subscribe, <<"mqttuser0001/sub/1">>),
+    allow = emqx_access_control:check_acl(MqttUser, subscribe, <<"mqttuser0001/sub/+">>),
+    allow = emqx_access_control:check_acl(MqttUser, subscribe, <<"mqttuser0001/sub/#">>),
 
-get_base_dir() ->
-    get_base_dir(?MODULE).
+    allow = emqx_access_control:check_acl(MqttUser, publish, <<"mqttuser0001/pubsub/1">>),
+    allow = emqx_access_control:check_acl(MqttUser, publish, <<"mqttuser0001/pubsub/+">>),
+    allow = emqx_access_control:check_acl(MqttUser, publish, <<"mqttuser0001/pubsub/#">>),
+    allow = emqx_access_control:check_acl(MqttUser, subscribe, <<"mqttuser0001/pubsub/1">>),
+    allow = emqx_access_control:check_acl(MqttUser, subscribe, <<"mqttuser0001/pubsub/+">>),
+    allow = emqx_access_control:check_acl(MqttUser, subscribe, <<"mqttuser0001/pubsub/#">>),
 
-local_path(Components, Module) ->
-    filename:join([get_base_dir(Module) | Components]).
-
-local_path(Components) ->
-    local_path(Components, ?MODULE).
-
-set_app_env({App, Lists}) ->
-    F = fun ({acl_file, _Var}) ->
-                application:set_env(App, acl_file, local_path(["deps", "emqx", "etc", "acl.conf"]));
-            ({auth_dn, _Var}) ->
-                application:set_env(App, auth_dn, "cn=%u,ou=test_auth,dc=emqtt,dc=com");
-            ({Par, Var}) ->
-                application:set_env(App, Par, Var)
-        end,
-    lists:foreach(F, Lists),
+    deny = emqx_access_control:check_acl(NoMqttUser, publish, <<"mqttuser0001/req/mqttuser0001/+">>),
+    deny = emqx_access_control:check_acl(MqttUser, publish, <<"mqttuser0001/req/mqttuser0002/+">>),
+    deny = emqx_access_control:check_acl(MqttUser, subscribe, <<"mqttuser0001/req/+/mqttuser0002">>),
+    ok.
+    
+start_apps(App, SchemaFile, ConfigFile) ->
+    read_schema_configs(App, SchemaFile, ConfigFile),
+    set_special_configs(App),
     application:ensure_all_started(App).
 
-prepare(Handle) ->
-    eldap:add(Handle, "dc=emqtt,dc=com",
-                      [{"objectclass", ["dcObject", "organization"]},
-                       {"dc", ["emqtt"]}, {"o", ["emqtt,Inc."]}]),
+read_schema_configs(App, SchemaFile, ConfigFile) ->
+    ct:pal("Read configs - SchemaFile: ~p, ConfigFile: ~p", [SchemaFile, ConfigFile]),
+    Schema = cuttlefish_schema:files([SchemaFile]),
+    Conf = conf_parse:file(ConfigFile),
+    NewConfig = cuttlefish_generator:map(Schema, Conf),
+    Vals = proplists:get_value(App, NewConfig, []),
+    [application:set_env(App, Par, Value) || {Par, Value} <- Vals].
 
-    ok = eldap:add(Handle, ?AuthDN,
-                      [{"objectclass", ["organizationalUnit"]},
-                       {"ou", ["test_auth"]}]),
-    %% Add
-    ok = eldap:add(Handle, "cn=plain," ++ ?AuthDN,
-                 [{"objectclass", ["mqttUser"]},
-                  {"cn", ["plain"]},
-                  {"username", ["plain"]},
-                  {"password", ["plain"]}]),
+set_special_configs(emqx) ->
+    application:set_env(emqx, allow_anonymous, false),
+    application:set_env(emqx, enable_acl_cache, false),
+    application:set_env(emqx, acl_nomatch, deny),
+    application:set_env(emqx, plugins_loaded_file, deps_path(emqx, "test/emqx_SUITE_data/loaded_plugins"));
 
-    ok = eldap:add(Handle, "cn=md5," ++ ?AuthDN,
-                 [{"objectclass", ["mqttUser"]},
-                  {"cn", ["md5"]}, {"username", ["md5"]}, {"password", ["1bc29b36f623ba82aaf6724fd3b16718"]}]),
-    ok = eldap:add(Handle, "cn=sha," ++ ?AuthDN,
-                 [{"objectclass", ["mqttUser"]},
-                  {"cn", ["sha"]}, {"username", ["sha"]}, {"password", ["d8f4590320e1343a915b6394170650a8f35d6926"]}]),
-    ok = eldap:add(Handle, "cn=sha256," ++ ?AuthDN,
-                 [{"objectclass", ["mqttUser"]},
-                  {"cn", ["sha256"]}, {"username", ["sha256"]}, {"password", ["5d5b09f6dcb2d53a5fffc60c4ac0d55fabdf556069d6631545f42aa6e3500f2e"]}]).
+set_special_configs(emqx_auth_ldap) ->
+    application:set_env(emqx_auth_ldap, device_dn, "ou=testdevice, dc=emqx, dc=io");
+set_special_configs(_App) ->
+    ok.
 
-cleanup(Handle) ->
-    case eldap:search(Handle, [{base, ?AuthDN},
-                               {filter, eldap:present("objectclass")},
-                               {scope,  eldap:wholeSubtree()}])
-    of
-        {ok, {eldap_search_result, Entries, _}} ->
-            [ok = eldap:delete(Handle, Entry) || {eldap_entry, Entry, _} <- Entries];
-        _ -> ignore
-   end,
-   ok.
+local_path(RelativePath) ->
+    deps_path(emqx_auth_ldap, RelativePath).
+
+deps_path(App, RelativePath) ->
+    Path0 = code:priv_dir(App),
+    Path = case file:read_link(Path0) of
+               {ok, Resolved} -> Resolved;
+               {error, _} -> Path0
+            end,
+    filename:join([Path, "..", RelativePath]).

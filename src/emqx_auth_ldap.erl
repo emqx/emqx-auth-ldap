@@ -17,31 +17,105 @@
 -include_lib("emqx/include/emqx.hrl").
 -include_lib("eldap/include/eldap.hrl").
 
--import(proplists, [get_value/2, get_value/3]).
+-behaviour(emqx_auth_mod).
 
--import(emqx_auth_ldap_cli, [search/2, fill/2, gen_filter/2]).
+-import(proplists, [get_value/2]).
+
+-import(emqx_auth_ldap_cli, [search/2, init_args/1]).
 
 -export([init/1, check/3, description/0]).
 
--define(EMPTY(Username), (Username =:= undefined orelse Username =:= <<>>)).
+-define(UNDEFINED(Username), (Username =:= undefined orelse Username =:= <<>>)).
 
-init({AuthDn, HashType}) ->
-    {ok, #{auth_dn => AuthDn, hash_type => HashType}}.
+init(ENVS) ->
+    init_args(ENVS).
 
-check(#{username := Username}, Password, _State) when ?EMPTY(Username); ?EMPTY(Password) ->
-    {error, username_or_password_undefined};
+check(#{username := Username}, _Password, _State) when ?UNDEFINED(Username) ->
+    {error, username_undefined};
 
-check(Credentials, Password, #{auth_dn := AuthDn, hash_type := HashType}) ->
-    Filter = gen_filter(Credentials, AuthDn),
-    case search(fill(Credentials, AuthDn), Filter) of
-        {ok, #eldap_search_result{entries = []}} ->
-            ignore;
-        {ok, #eldap_search_result{entries = [Entry]}} ->
-            Attributes = Entry#eldap_entry.attributes,
-            emqx_passwd:check_pass({list_to_binary(proplists:get_value("password", Attributes)), Password}, HashType);
-        {error, Reason} ->
-            {error, Reason}
+check(#{username := Username}, Password, State = #{password_attr := PasswdAttr}) ->
+    case lookup_user(Username, State) of
+        undefined -> ignore;
+        {error, Error} -> {error, Error};
+        Attributes ->
+            case get_value(PasswdAttr, Attributes) of
+                undefined ->
+                    logger:error("LDAP Search State: ~p, uid: ~p, result:~p", [State, Username, Attributes]),
+                    ok;
+                [Passhash1] ->
+                    format_password(Passhash1, Password)
+            end
     end.
 
-description() -> "LDAP Authentication Plugin".
+lookup_user(Username, #{username_attr := UidAttr,
+                        match_objectclass := ObjectClass,
+                        device_dn := DeviceDn}) ->
+    Filter = eldap2:equalityMatch("objectClass", ObjectClass),
+    case search(lists:concat([UidAttr,"=", binary_to_list(Username), ",", DeviceDn]), Filter) of
+        {error, noSuchObject} ->
+            undefined;
+        {ok, #eldap_search_result{entries = [Entry]}} ->
+            Attributes = Entry#eldap_entry.attributes,
+            case get_value("isEnabled", Attributes) of
+                undefined ->
+                    Attributes;
+                [Val] ->
+                    case list_to_atom(string:to_lower(Val)) of
+                        true -> Attributes;
+                        false -> {error, username_disabled}
+                    end
+            end;
+        {error, Error} ->
+            logger:error("LDAP Search dn: ~p, filter: ~p, fail:~p", [DeviceDn, Filter, Error]),
+            {error, username_or_password_error}
+    end.
 
+check_pass(Password, Password) -> ok;
+check_pass(_, _) -> {error, password_error}.
+
+format_password(Passhash, Password) ->
+    case do_format_password(Passhash, Password) of
+        {error, Error2} ->
+            {error, Error2};
+
+        {Passhash1, Password1} ->
+            check_pass(Passhash1, Password1)
+    end.
+
+do_format_password(Passhash, Password) ->
+    Base64PasshashHandler = handle_passhash(fun(HashType, Passhash1, Password1) ->
+                                                Passhash2 = binary_to_list(base64:decode(Passhash1)),
+                                                resolve_passhash(HashType, Passhash2, Password1) 
+                                            end,
+                                            fun(_Passhash, _Password) -> 
+                                                {error, password_error} 
+                                            end),
+    PasshashHandler = handle_passhash(fun resolve_passhash/3,
+                                      Base64PasshashHandler),
+    PasshashHandler(Passhash, Password).
+
+resolve_passhash(HashType, Passhash, Password) ->
+    [_, Passhash1] = string:tokens(Passhash, "}"),
+    do_resolve(HashType, Passhash1, Password).
+
+handle_passhash(HandleMatch, HandleNoMatch) ->
+    fun(Passhash, Password) ->
+            case re:run(Passhash, "(?<={)[^{}]+(?=})", [{capture, all, list}, global]) of
+                {match, [[HashType]]} ->
+                    io:format("~n Passhash:~p HashType:~p ~n", [Passhash, HashType]),
+                    HandleMatch(list_to_atom(string:to_lower(HashType)), Passhash, Password);
+                _ ->
+                    HandleNoMatch(Passhash, Password)
+            end
+    end.
+
+do_resolve(ssha, Passhash, Password) ->
+    D64 = base64:decode(Passhash),
+    {HashedData, Salt} = lists:split(20, binary_to_list(D64)),
+    NewHash = crypto:hash(sha, <<Password/binary, (list_to_binary(Salt))/binary>>),
+    {list_to_binary(HashedData), NewHash};
+do_resolve(HashType, Passhash, Password) ->
+    Password1 = base64:encode(crypto:hash(HashType, Password)),
+    {list_to_binary(Passhash), Password1}.
+
+description() -> "LDAP Authentication Plugin".

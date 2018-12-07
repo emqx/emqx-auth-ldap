@@ -7,89 +7,69 @@ Build
 -----
 
 ```
-make && make tests
-```
-
-Configuration
--------------
-
-File: etc/emqx_auth_ldap.conf
-
-```
-auth.ldap.servers = 127.0.0.1
-
-auth.ldap.port = 389
-
-auth.ldap.timeout = 30
-
-auth.ldap.bind_dn = cn=root,dc=emqtt,dc=com
-
-auth.ldap.bind_password = public
-
-auth.ldap.ssl = false
-
-## TODO: SSL Support
-
-#auth.ldap.ssl.certfile = etc/certs/cert.pem
-
-#auth.ldap.ssl.keyfile = etc/certs/key.pem
-
-#auth.ldap.ssl.cacertfile = etc/certs/cacert.pem
-
-#auth.ldap.ssl.verify = verify_peer
-
-#auth.ldap.ssl.fail_if_no_peer_cert = true
-
-## Variables: %u = username, %c = clientid
-auth.ldap.auth_dn = cn=%u,ou=auth,dc=emqtt,dc=com
-
-## Password hash: plain, md5, sha, sha256
-auth.ldap.password_hash = sha256
-
-## Temporarily unavailable
-## auth.ldap.acl_dn = cn=%u,ou=acl,dc=emqtt,dc=com
-
+make
 ```
 
 Load the Plugin
 ---------------
 
 ```
-./bin/emqx_ctl plugins load emqx_auth_ldap
+# ./bin/emqx_ctl plugins load emqx_auth_ldap
 ```
+
+Generate Password
+---------------
+
+```
+slappasswd -h '{ssha}' -s public
+```
+
 Configuration Open LDAP
 -----------------------
 
 vim /etc/openldap/slapd.conf
 
 ```
+include         /etc/openldap/schema/core.schema
+include         /etc/openldap/schema/cosine.schema
+include         /etc/openldap/schema/inetorgperson.schema
+include         /etc/openldap/schema/ppolicy.schema
+include         /etc/openldap/schema/emqx.schema
+
 database bdb
-suffix   "dc=emqtt,dc=com"
-rootdn   "cn=root,dc=emqtt,dc=com"
-rootpw   {SSHA}xvvgeQvLGZzHrCzFTfAOkL1gkHQrJX59
+suffix "dc=emqx,dc=io"
+rootdn "cn=root,dc=emqx,dc=io"
+rootpw {SSHA}eoF7NhNrejVYYyGHqnt+MdKNBh4r1w3W
 
+directory       /etc/openldap/data
 ```
 
-
-Include Emqtt Schema
---------------------
-
-vim /etc/openldap/slapd.conf
-```
-include emqtt.schema
-```
-
-Create Emqtt User Data
+Import EMQX User Data
 ----------------------
 
+Use ldapadd 
 ```
-# ldapadd -x -D "cn=root,dc=emqtt,dc=com" -w public -f emqtt.com.ldif
+# ldapadd -x -D "cn=root,dc=emqx,dc=io" -w public -f emqx.com.ldif
 ```
 
-TODO
-----
+Use slapadd
+```
+# sudo slapadd -l schema/emqx.io.ldif -f slapd.conf
+```
 
-Support SSL Options
+Launch slapd
+```
+# sudo slapd -d 3
+```
+
+Test
+-------
+After configure slapd correctly and launch slapd successfully. 
+You could execute
+
+``` bash
+# make tests
+```
 
 License
 -------

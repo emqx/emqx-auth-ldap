@@ -22,24 +22,10 @@
 
 -import(proplists, [get_value/2, get_value/3]).
 
--export([connect/1, search/2, fill/2, gen_filter/2]).
+%% ecpool callback
+-export([connect/1]).
 
-fill(#{client_id := ClientId, username := Username}, AuthDn) ->
-    case re:run(AuthDn, "%[uc]", [global, {capture, all, list}]) of
-        {match, [["%u"]]} ->
-            re:replace(AuthDn, "%u", binary_to_list(Username), [global, {return, list}]);
-        {match, [["%c"]]} ->
-            re:replace(AuthDn, "%c", binary_to_list(ClientId), [global, {return, list}]);
-        nomatch ->
-            AuthDn
-    end.
-
-gen_filter(#{client_id := ClientId, username := Username}, Dn) ->
-    case re:run(Dn, "%[uc]", [global, {capture, all, list}]) of
-        {match, [["%u"]]} -> eldap:equalityMatch("username", Username);
-        {match, [["%c"]]} -> eldap:equalityMatch("username", ClientId);
-        nomatch           -> eldap:equalityMatch("username", Username)
-    end.
+-export([search/2, search/3, init_args/1]).
 
 %%--------------------------------------------------------------------
 %% LDAP Connect/Search
@@ -51,21 +37,23 @@ connect(Opts) ->
     Timeout      = get_value(timeout, Opts, 30),
     BindDn       = get_value(bind_dn, Opts),
     BindPassword = get_value(bind_password, Opts),
-    LdapOpts = case get_value(ssl, Opts, false) of
-        true ->
-            SslOpts = get_value(sslopts, Opts),
-            [{port, Port}, {timeout, Timeout}, {sslopts, SslOpts}];
-        false ->
-            [{port, Port}, {timeout, Timeout}]
-    end,
-
-    case eldap:open(Servers, LdapOpts) of
+    LdapOpts     = case get_value(ssl, Opts, false) of
+                       true ->
+                           SslOpts = get_value(sslopts, Opts),
+                           [{port, Port}, {timeout, Timeout}, {sslopts, SslOpts}];
+                       false ->
+                           [{port, Port}, {timeout, Timeout}]
+                   end,
+    logger:debug("Connecting to OpenLDAP server: ~p, Opts:~p ...", [Servers, LdapOpts]),
+    case eldap2:open(Servers, LdapOpts) of
         {ok, LDAP} ->
-            case catch eldap:simple_bind(LDAP, BindDn, BindPassword) of
-                ok -> {ok, LDAP};
+            try eldap2:simple_bind(LDAP, BindDn, BindPassword) of
+                ok -> 
+                    {ok, LDAP};
                 {error, Error} ->
-                    {error, Error};
-                {'EXIT', Reason} ->
+                    {error, Error}
+            catch
+                error : Reason ->
                     {error, Reason}
             end;
         {error, Reason} ->
@@ -73,5 +61,26 @@ connect(Opts) ->
     end.
 
 search(Base, Filter) ->
-    ecpool:with_client(?APP, fun(C) -> eldap:search(C, [{base, Base}, {filter, Filter}]) end).
+    ecpool:with_client(?APP, fun(C) -> 
+        eldap2:search(C, [{base, Base}, 
+                         {filter, Filter},
+                         {deref, eldap2:derefFindingBaseObj()}]) 
+    end).
 
+search(Base, Filter, Attributes) ->
+    ecpool:with_client(?APP, fun(C) -> 
+                                 eldap2:search(C, [{base, Base},
+                                                   {filter, Filter},
+                                                   {attributes, Attributes},
+                                                   {deref, eldap2:derefFindingBaseObj()}]) 
+                             end).
+
+init_args(ENVS) ->
+    DeviceDn = get_value(device_dn, ENVS),
+    ObjectClass = get_value(match_objectclass, ENVS),
+    UidAttr = get_value(username_attr, ENVS),
+    PasswdAttr = get_value(password_attr, ENVS),
+    {ok, #{device_dn => DeviceDn,
+           match_objectclass => ObjectClass,
+           username_attr => UidAttr,
+           password_attr => PasswdAttr}}.
