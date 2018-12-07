@@ -19,3 +19,4 @@ test/ct.cover.spec
 .DS_Store
 _build/
 rebar.lock
+erlang.mk
