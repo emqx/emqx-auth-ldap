@@ -33,24 +33,18 @@ init(ENVS) ->
 check(#{username := Username}, _Password, _State) when ?UNDEFINED(Username) ->
     {error, username_undefined};
 
-check(#{username := Username}, Password, State) ->
+check(#{username := Username}, Password, State = #{password_attr := PasswdAttr}) ->
     case lookup_user(Username, State) of
         undefined -> ignore;
         {error, Error} -> {error, Error};
         Attributes ->
-            AttributesHandler = handle_attributes(Attributes, Password, State),
-            AttributesHandler(Attributes, Password)
-    end.
-    
-handle_attributes(Attributes, Password, #{password_attr := PasswdAttr}) ->
-    fun(DeviceDn, Username) ->
-        case get_value(PasswdAttr, Attributes) of
-            undefined ->
-                logger:error("LDAP Search dn: ~p, uid: ~p, result:~p", [DeviceDn, Username, Attributes]),
-                ok;
-            [Passhash1] ->
-                format_password(Passhash1, Password)
-        end
+            case get_value(PasswdAttr, Attributes) of
+                undefined ->
+                    logger:error("LDAP Search State: ~p, uid: ~p, result:~p", [State, Username, Attributes]),
+                    ok;
+                [Passhash1] ->
+                    format_password(Passhash1, Password)
+            end
     end.
 
 lookup_user(Username, #{username_attr := UidAttr,

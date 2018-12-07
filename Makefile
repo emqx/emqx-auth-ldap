@@ -3,7 +3,7 @@ PROJECT_DESCRIPTION = EMQ X Authentication/ACL with LDAP
 PROJECT_VERSION = 3.0
 
 DEPS = ecpool clique emqx_passwd eldap2
-dep_eldap2     = git-emqx https://github.com/emqx/eldap2 eldap2
+dep_eldap2      = git-emqx https://github.com/emqx/eldap2 eldap2
 dep_ecpool      = git-emqx https://github.com/emqx/ecpool master
 dep_clique      = git-emqx https://github.com/emqx/clique develop
 dep_emqx_passwd = git-emqx https://github.com/emqx/emqx-passwd emqx30
