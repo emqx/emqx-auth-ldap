@@ -9,10 +9,14 @@ rel/example_project
 .concrete/DEV_MODE
 .rebar
 .erlang.mk/
-emq_auth_ldap.d
+emqx_auth_ldap.d
 data/
 cover/
 ct.coverdata
 eunit.coverdata
 logs/
 test/ct.cover.spec
+.DS_Store
+_build/
+rebar.lock
+erlang.mk

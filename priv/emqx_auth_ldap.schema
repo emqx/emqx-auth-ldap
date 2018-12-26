@@ -1,0 +1,100 @@
+%%-*- mode: erlang -*-
+%% emqx_auth_ldap config mapping
+
+{mapping, "auth.ldap.servers", "emqx_auth_ldap.ldap", [
+  {default, "127.0.0.1"},
+  {datatype, string}
+]}.
+
+{mapping, "auth.ldap.port", "emqx_auth_ldap.ldap", [
+  {default, 389},
+  {datatype, integer}
+]}.
+
+{mapping, "auth.ldap.pool", "emqx_auth_ldap.ldap", [
+  {default, 8},
+  {datatype, integer}
+]}.
+
+{mapping, "auth.ldap.bind_dn", "emqx_auth_ldap.ldap", [
+  {datatype, string},
+  {default, "cn=root,dc=emqx,dc=io"}
+]}.
+
+{mapping, "auth.ldap.bind_password", "emqx_auth_ldap.ldap", [
+  {datatype, string},
+  {default, "public"}
+]}.
+
+{mapping, "auth.ldap.timeout", "emqx_auth_ldap.ldap", [
+  {default, "30s"},
+  {datatype, {duration, ms}}
+]}.
+
+{mapping, "auth.ldap.ssl", "emqx_auth_ldap.ldap", [
+  {default, false},
+  {datatype, {enum, [true, false]}}
+]}.
+
+{mapping, "auth.ldap.ssl.certfile", "emqx_auth_ldap.ldap", [
+  {datatype, string}
+]}.
+
+{mapping, "auth.ldap.ssl.keyfile ", "emqx_auth_ldap.ldap", [
+  {datatype, string}
+]}.
+
+{mapping, "auth.ldap.ssl.cacertfile ", "emqx_auth_ldap.ldap", [
+  {datatype, string}
+]}.
+
+{mapping, "auth.ldap.ssl.verify", "emqx_auth_ldap.ldap", [
+  {default, verify_peer},
+  {datatype, atom}
+]}.
+
+{mapping, "auth.ldap.ssl.fail_if_no_peer_cert", "emqx_auth_ldap.ldap", [
+  {default, true},
+  {datatype, {enum, [true, false]}}
+]}.
+
+%% TODO: ssl options...
+{translation, "emqx_auth_ldap.ldap", fun(Conf) ->
+    Servers = string:tokens(cuttlefish:conf_get("auth.ldap.servers", Conf), ","),
+    Port = cuttlefish:conf_get("auth.ldap.port", Conf),
+    Pool = cuttlefish:conf_get("auth.ldap.pool", Conf),
+    BindDN = cuttlefish:conf_get("auth.ldap.bind_dn", Conf),
+    BindPassword = cuttlefish:conf_get("auth.ldap.bind_password", Conf),
+    Timeout = cuttlefish:conf_get("auth.ldap.timeout", Conf),
+    Opts = [{servers, Servers}, 
+            {port, Port}, 
+            {timeout, Timeout}, 
+            {bind_dn, BindDN}, 
+            {bind_password, BindPassword},
+            {pool, Pool},
+            {auto_reconnect, 2}],
+    case cuttlefish:conf_get("auth.ldap.ssl", Conf) of
+        true  -> [{ssl, true}|Opts];
+        false -> [{ssl, false}|Opts]
+    end
+end}.
+
+{mapping, "auth.ldap.device_dn", "emqx_auth_ldap.device_dn", [
+  {default, "ou=device,dc=emqx,dc=i"},
+  {datatype, string}
+]}.
+
+{mapping, "auth.ldap.match_objectclass", "emqx_auth_ldap.match_objectclass", [
+  {default, "mqttUser"},
+  {datatype, string}
+]}.
+
+{mapping, "auth.ldap.username.attributetype", "emqx_auth_ldap.username_attr", [
+  {default, "uid"},
+  {datatype, string}
+]}.
+
+{mapping, "auth.ldap.password.attributetype", "emqx_auth_ldap.password_attr", [
+  {default, "userPassword"},
+  {datatype, string}
+]}.
