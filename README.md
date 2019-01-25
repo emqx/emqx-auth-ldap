@@ -44,6 +44,19 @@ rootpw {SSHA}eoF7NhNrejVYYyGHqnt+MdKNBh4r1w3W
 directory       /etc/openldap/data
 ```
 
+If the ldap launched with error below:
+```
+Unrecognized database type (bdb)
+5c4a72b9 slapd.conf: line 7: <database> failed init (bdb)
+slapadd: bad configuration file!
+```
+
+Insert lines to the slapd.conf
+```
+modulepath /usr/lib/ldap
+moduleload back_bdb.la
+```
+
 Import EMQX User Data
 ----------------------
 
