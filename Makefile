@@ -1,6 +1,6 @@
 PROJECT = emqx_auth_ldap
 PROJECT_DESCRIPTION = EMQ X Authentication/ACL with LDAP
-PROJECT_VERSION = 3.0
+PROJECT_VERSION = 3.1
 
 DEPS = ecpool emqx_passwd eldap2
 dep_eldap2      = git-emqx https://github.com/emqx/eldap2 v0.1.0
