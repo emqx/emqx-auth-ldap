@@ -7,8 +7,11 @@ dep_eldap2      = git-emqx https://github.com/emqx/eldap2 v0.1.0
 dep_ecpool      = git-emqx https://github.com/emqx/ecpool v0.3.0
 dep_emqx_passwd = git-emqx https://github.com/emqx/emqx-passwd v1.0
 
+CUR_BRANCH := $(shell git branch | grep -e "^*" | cut -d' ' -f 2)
+BRANCH := $(if $(filter $(CUR_BRANCH), master develop testing), $(CUR_BRANCH), testing)
+
 BUILD_DEPS = emqx cuttlefish
-dep_emqx       = git-emqx https://github.com/emqx/emqx testing
+dep_emqx       = git-emqx https://github.com/emqx/emqx $(BRANCH)
 dep_cuttlefish = git-emqx https://github.com/emqx/cuttlefish v2.2.1
 
 NO_AUTOPATCH = cuttlefish eldap2
@@ -52,25 +55,3 @@ rebar-ct: app.config
 
 rebar-xref:
 	@rebar3 xref
-
-## Below are for version consistency check during erlang.mk and rebar3 dual mode support
-none=
-space = $(none) $(none)
-comma = ,
-quote = \"
-curly_l = "{"
-curly_r = "}"
-dep-versions = [$(foreach dep,$(DEPS) $(BUILD_DEPS) $(TEST_DEPS),$(curly_l)$(dep),$(quote)$(word 3,$(dep_$(dep)))$(quote)$(curly_r)$(comma))[]]
-
-.PHONY: dep-vsn-check
-dep-vsn-check:
-	$(verbose) erl -noshell -eval \
-		"MkVsns = lists:sort(lists:flatten($(dep-versions))), \
-		{ok, Conf} = file:consult('rebar.config'), \
-		{_, Deps} = lists:keyfind(deps, 1, Conf), \
-		F = fun({N, V}) when is_list(V) -> {N, V}; ({N, {git, _, {branch, V}}}) -> {N, V} end, \
-		RebarVsns = lists:sort(lists:map(F, Deps)), \
-		case {RebarVsns -- MkVsns, MkVsns -- RebarVsns} of \
-		  {[], []} -> halt(0); \
-		  {Rebar, Mk} -> erlang:error({deps_version_discrepancy, [{rebar, Rebar}, {mk, Mk}]}) \
-		end."
