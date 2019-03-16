@@ -28,7 +28,7 @@
 -type no_match_action() :: atom().
 
 check_acl(#{username := <<$$, _/binary>>}, _PubSub, _Topic, _NoMatchAction, _State) ->
-    ignore;
+    ok;
 check_acl(#{username := Username}, PubSub, Topic, NoMatchAction, 
           #{device_dn := DeviceDn,
             match_objectclass := ObjectClass,
