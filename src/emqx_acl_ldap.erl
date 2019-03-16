@@ -25,8 +25,6 @@
 
 -import(emqx_auth_ldap_cli, [search/3, init_args/1]).
 
--type no_match_action() :: atom().
-
 check_acl(#{username := <<$$, _/binary>>}, _PubSub, _Topic, _NoMatchAction, _State) ->
     ok;
 
@@ -49,7 +47,7 @@ check_acl(#{username := Username}, PubSub, Topic, NoMatchAction,
         {ok, #eldap_search_result{entries = [Entry]}} ->
             Topics = get_value(Attribute, Entry#eldap_entry.attributes)
                 ++ get_value(Attribute1, Entry#eldap_entry.attributes),
-            match(Topic, Topics, NoMatchAction);
+            match(Topic, Topics);
         Error ->
             logger:error("LDAP search error:~p", [Error]),
             {stop, deny}
@@ -58,7 +56,7 @@ check_acl(#{username := Username}, PubSub, Topic, NoMatchAction,
 match(_Topic, []) ->
     ok;
 
-match(Topic, [Filter | Topics], NoMatchAction) ->
+match(Topic, [Filter | Topics]) ->
     case emqx_topic:match(Topic, list_to_binary(Filter)) of
         true  -> {stop, allow};
         false -> match(Topic, Topics)
