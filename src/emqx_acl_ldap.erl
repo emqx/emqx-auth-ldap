@@ -28,7 +28,8 @@
 -type no_match_action() :: atom().
 
 check_acl(#{username := <<$$, _/binary>>}, _PubSub, _Topic, _NoMatchAction, _State) ->
-    ignore;
+    ok;
+
 check_acl(#{username := Username}, PubSub, Topic, NoMatchAction, 
           #{device_dn := DeviceDn,
             match_objectclass := ObjectClass,
@@ -51,16 +52,16 @@ check_acl(#{username := Username}, PubSub, Topic, NoMatchAction,
             match(Topic, Topics, NoMatchAction);
         Error ->
             logger:error("LDAP search error:~p", [Error]),
-            {ok, NoMatchAction}
+            {stop, deny}
     end.
 
-match(_Topic, [], NoMatchAction) ->
-    {ok, NoMatchAction};
+match(_Topic, []) ->
+    ok;
 
 match(Topic, [Filter | Topics], NoMatchAction) ->
     case emqx_topic:match(Topic, list_to_binary(Filter)) of
-        true  -> {ok, allow};
-        false -> match(Topic, Topics, NoMatchAction)
+        true  -> {stop, allow};
+        false -> match(Topic, Topics)
     end.
 
 reload_acl(_State) ->
