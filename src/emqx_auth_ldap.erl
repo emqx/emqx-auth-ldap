@@ -27,7 +27,7 @@
 
 check(#{username := Username}, _State) 
   when ?UNDEFINED(Username) ->
-    {error, username_undefined};
+    {ok, #{result => username_undefined}};
 
 check(Credentials = #{username := Username, password := Password},
       State = #{password_attr := PasswdAttr}) ->

@@ -48,19 +48,19 @@ check_acl(#{username := Username}, PubSub, Topic, NoMatchAction,
         {ok, #eldap_search_result{entries = [Entry]}} ->
             Topics = get_value(Attribute, Entry#eldap_entry.attributes)
                 ++ get_value(Attribute1, Entry#eldap_entry.attributes),
-            match(Topic, Topics, NoMatchAction);
+            match(Topic, Topics);
         Error ->
             logger:error("LDAP search error:~p", [Error]),
-            {ok, NoMatchAction}
+            {stop, deny}
     end.
 
-match(_Topic, [], NoMatchAction) ->
-    {ok, NoMatchAction};
+match(_Topic, []) ->
+    ok;
 
-match(Topic, [Filter | Topics], NoMatchAction) ->
+match(Topic, [Filter | Topics]) ->
     case emqx_topic:match(Topic, list_to_binary(Filter)) of
-        true  -> {ok, allow};
-        false -> match(Topic, Topics, NoMatchAction)
+        true  -> {stop, allow};
+        false -> match(Topic, Topics)
     end.
 
 reload_acl(_State) ->
