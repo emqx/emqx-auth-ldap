@@ -28,7 +28,7 @@
 check_acl(#{username := <<$$, _/binary>>}, _PubSub, _Topic, _NoMatchAction, _State) ->
     ok;
 
-check_acl(#{username := Username}, PubSub, Topic, NoMatchAction, 
+check_acl(#{username := Username}, PubSub, Topic, _NoMatchAction,
           #{device_dn := DeviceDn,
             match_objectclass := ObjectClass,
             username_attr := UidAttr}) ->
