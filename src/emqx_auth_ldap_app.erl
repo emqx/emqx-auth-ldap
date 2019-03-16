@@ -25,25 +25,27 @@ start(_StartType, _StartArgs) ->
     {ok, Sup} = emqx_auth_ldap_sup:start_link(),
     if_enabled([device_dn, match_objectclass,
                 username_attr, password_attr],
-               fun reg_authmod/1),
+               fun load_auth_hook/1),
     if_enabled([device_dn, match_objectclass,
                 username_attr, password_attr],
-               fun reg_aclmod/1),
+               fun load_acl_hook/1),
     {ok, Sup}.
 
 prep_stop(State) ->
-    emqx_access_control:unregister_mod(auth, emqx_auth_ldap),
-    emqx_access_control:unregister_mod(acl, emqx_acl_ldap),
+    emqx:unhook('client.authenticate', fun emqx_auth_ldap:check/2),
+    emqx:unhook('client.check_acl', fun emqx_acl_ldap:check_acl/5),
     State.
 
 stop(_State) ->
     ok.
 
-reg_authmod(DeviceDn) ->
-    emqx_access_control:register_mod(auth, emqx_auth_ldap, DeviceDn).
+load_auth_hook(DeviceDn) ->
+    Params = maps:from_list(DeviceDn),
+    emqx:hook('client.authenticate', fun emqx_auth_ldap:check/2, [Params]).
 
-reg_aclmod(DeviceDn) ->
-    emqx_access_control:register_mod(acl, emqx_acl_ldap, DeviceDn).
+load_acl_hook(DeviceDn) ->
+    Params = maps:from_list(DeviceDn),
+    emqx:hook('client.check_acl', fun emqx_acl_ldap:check_acl/5 , [Params]).
 
 if_enabled(Cfgs, Fun) ->
     case get_env(Cfgs) of
