@@ -33,10 +33,8 @@
 -include_lib("common_test/include/ct.hrl").
 
 all() ->
-    [
-     check_auth,
-     check_acl
-    ].
+    [check_auth,
+     check_acl].
 
 init_per_suite(Config) ->
     [start_apps(App, SchemaFile, ConfigFile) ||
@@ -51,31 +49,45 @@ end_per_suite(_Config) ->
     [application:stop(App) || App <- [emqx_auth_ldap, emqx]].
 
 check_auth(_) ->
-    MqttUser1 = #{client_id => <<"mqttuser1">>, username => <<"mqttuser0001">>},
-    MqttUser2 = #{client_id => <<"mqttuser2">>, username => <<"mqttuser0002">>},
-    MqttUser3 = #{client_id => <<"mqttuser3">>, username => <<"mqttuser0003">>},
-    MqttUser4 = #{client_id => <<"mqttuser4">>, username => <<"mqttuser0004">>},
-    MqttUser5 = #{client_id => <<"mqttuser5">>, username => <<"mqttuser0005">>},
-    NonExistUser1 = #{client_id => <<"mqttuser6">>, username => <<"mqttuser0006">>},
-    NonExistUser2 = #{client_id => <<"mqttuser7">>, username => <<"mqttuser0005">>},
-
-    ok = emqx_access_control:authenticate(MqttUser1, <<"mqttuser0001">>),
-
-    ok = emqx_access_control:authenticate(MqttUser2, <<"mqttuser0002">>),
-
-    ok = emqx_access_control:authenticate(MqttUser3, <<"mqttuser0003">>),
-
-    ok = emqx_access_control:authenticate(MqttUser4, <<"mqttuser0004">>),
-
-    ok = emqx_access_control:authenticate(MqttUser5, <<"mqttuser0005">>),
-    
-    {error, auth_modules_not_found} = emqx_access_control:authenticate(NonExistUser1, <<"mqttuser0006">>),
-
-    {error, password_error} = emqx_access_control:authenticate(NonExistUser2, <<"mqttuser0006">>).
+    MqttUser1 = #{client_id => <<"mqttuser1">>,
+                  username => <<"mqttuser0001">>,
+                  password => <<"mqttuser0001">>,
+                  zone => external},
+    MqttUser2 = #{client_id => <<"mqttuser2">>,
+                  username => <<"mqttuser0002">>,
+                  password => <<"mqttuser0002">>,
+                  zone => external},
+    MqttUser3 = #{client_id => <<"mqttuser3">>,
+                  username => <<"mqttuser0003">>,
+                  password => <<"mqttuser0003">>,
+                  zone => external},
+    MqttUser4 = #{client_id => <<"mqttuser4">>,
+                  username => <<"mqttuser0004">>,
+                  password => <<"mqttuser0004">>,
+                  zone => external},
+    MqttUser5 = #{client_id => <<"mqttuser5">>,
+                  username => <<"mqttuser0005">>,
+                  password => <<"mqttuser0005">>,
+                  zone => external},
+    NonExistUser1 = #{client_id => <<"mqttuser6">>,
+                      username => <<"mqttuser0006">>,
+                      password => <<"mqttuser0006">>,
+                      zone => external},
+    NonExistUser2 = #{client_id => <<"mqttuser7">>,
+                      username => <<"mqttuser0005">>,
+                      password => <<"mqttuser0006">>,
+                      zone => external},
+    ?assertMatch({ok, _Credentials}, emqx_access_control:authenticate(MqttUser1)),
+    ?assertMatch({ok, _Credentials}, emqx_access_control:authenticate(MqttUser2)),
+    ?assertMatch({ok, _Credentials}, emqx_access_control:authenticate(MqttUser3)),
+    ?assertMatch({ok, _Credentials}, emqx_access_control:authenticate(MqttUser4)),
+    ?assertMatch({ok, _Credentials}, emqx_access_control:authenticate(MqttUser5)),
+    ?assertEqual({error, not_authorized}, emqx_access_control:authenticate(NonExistUser1)),
+    ?assertEqual({error, not_authorized}, emqx_access_control:authenticate(NonExistUser2)).
 
 check_acl(_) ->
-    MqttUser = #{client_id => <<"mqttuser1">>, username => <<"mqttuser0001">>, zone => undefined},
-    NoMqttUser = #{client_id => <<"mqttuser2">>, username => <<"mqttuser0007">>, zone => undefined},
+    MqttUser = #{client_id => <<"mqttuser1">>, username => <<"mqttuser0001">>, zone => external},
+    NoMqttUser = #{client_id => <<"mqttuser2">>, username => <<"mqttuser0007">>, zone => external},
     allow = emqx_access_control:check_acl(MqttUser, publish, <<"mqttuser0001/pub/1">>),
     allow = emqx_access_control:check_acl(MqttUser, publish, <<"mqttuser0001/pub/+">>),
     allow = emqx_access_control:check_acl(MqttUser, publish, <<"mqttuser0001/pub/#">>),
