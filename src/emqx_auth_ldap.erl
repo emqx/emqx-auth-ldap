@@ -17,33 +17,30 @@
 -include_lib("emqx/include/emqx.hrl").
 -include_lib("eldap/include/eldap.hrl").
 
--behaviour(emqx_auth_mod).
-
 -import(proplists, [get_value/2]).
 
 -import(emqx_auth_ldap_cli, [search/2, init_args/1]).
 
--export([init/1, check/3, description/0]).
+-export([check/2, description/0]).
 
 -define(UNDEFINED(Username), (Username =:= undefined orelse Username =:= <<>>)).
 
-init(ENVS) ->
-    init_args(ENVS).
+check(#{username := Username}, _State) 
+  when ?UNDEFINED(Username) ->
+    {ok, #{result => username_or_password_undefined}};
 
-check(#{username := Username}, _Password, _State) when ?UNDEFINED(Username) ->
-    {error, username_undefined};
-
-check(#{username := Username}, Password, State = #{password_attr := PasswdAttr}) ->
+check(Credentials = #{username := Username, password := Password},
+      State = #{password_attr := PasswdAttr}) ->
     case lookup_user(Username, State) of
-        undefined -> ignore;
+        undefined -> {ok, Credentials};
         {error, Error} -> {error, Error};
         Attributes ->
             case get_value(PasswdAttr, Attributes) of
                 undefined ->
                     logger:error("LDAP Search State: ~p, uid: ~p, result:~p", [State, Username, Attributes]),
-                    ok;
+                    {ok, Credentials};
                 [Passhash1] ->
-                    format_password(Passhash1, Password)
+                    format_password(Passhash1, Password, Credentials)
             end
     end.
 
@@ -70,16 +67,15 @@ lookup_user(Username, #{username_attr := UidAttr,
             {error, username_or_password_error}
     end.
 
-check_pass(Password, Password) -> ok;
-check_pass(_, _) -> {error, password_error}.
+check_pass(Password, Password, Credentials) -> {ok, Credentials#{result => success}};
+check_pass(_, _, _) -> {error, password_error}.
 
-format_password(Passhash, Password) ->
+format_password(Passhash, Password, Credentials) ->
     case do_format_password(Passhash, Password) of
         {error, Error2} ->
             {error, Error2};
-
         {Passhash1, Password1} ->
-            check_pass(Passhash1, Password1)
+            check_pass(Passhash1, Password1, Credentials)
     end.
 
 do_format_password(Passhash, Password) ->

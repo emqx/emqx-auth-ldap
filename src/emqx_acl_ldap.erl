@@ -14,13 +14,10 @@
 
 -module(emqx_acl_ldap).
 
--behaviour(emqx_acl_mod).
-
 -include_lib("emqx/include/emqx.hrl").
 -include_lib("eldap/include/eldap.hrl").
 
-%% ACL Callbacks
--export([init/1, check_acl/2, reload_acl/1, description/0]).
+-export([check_acl/5, reload_acl/1, description/0]).
 
 -import(proplists, [get_value/2]).
 
@@ -28,13 +25,10 @@
 
 -import(emqx_auth_ldap_cli, [search/3, init_args/1]).
 
-init(ENVS) ->
-    init_args(ENVS).
+check_acl(#{username := <<$$, _/binary>>}, _PubSub, _Topic, _NoMatchAction, _State) ->
+    ok;
 
-check_acl({#{username := <<$$, _/binary>>}, _PubSub, _Topic}, _State) ->
-    ignore;
-
-check_acl({#{username := Username}, PubSub, Topic}, 
+check_acl(#{username := Username}, PubSub, Topic, _NoMatchAction,
           #{device_dn := DeviceDn,
             match_objectclass := ObjectClass,
             username_attr := UidAttr}) ->
@@ -47,24 +41,24 @@ check_acl({#{username := Username}, PubSub, Topic},
     logger:debug("search dn:~p filter:~p, attribute:~p", [DeviceDn, Filter, Attribute]),
     case search(concat([UidAttr,"=", binary_to_list(Username), ",", DeviceDn]), Filter, [Attribute, Attribute1]) of
         {error, noSuchObject} ->
-            ignore;
+            ok;
         {ok, #eldap_search_result{entries = []}} ->
-            ignore;
+            ok;
         {ok, #eldap_search_result{entries = [Entry]}} ->
             Topics = get_value(Attribute, Entry#eldap_entry.attributes)
                 ++ get_value(Attribute1, Entry#eldap_entry.attributes),
             match(Topic, Topics);
         Error ->
             logger:error("LDAP search error:~p", [Error]),
-            deny
+            {stop, deny}
     end.
 
 match(_Topic, []) ->
-    ignore;
+    ok;
 
 match(Topic, [Filter | Topics]) ->
     case emqx_topic:match(Topic, list_to_binary(Filter)) of
-        true  -> allow;
+        true  -> {stop, allow};
         false -> match(Topic, Topics)
     end.
 
