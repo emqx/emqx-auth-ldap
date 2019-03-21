@@ -16,6 +16,8 @@
 
 -behaviour(application).
 
+-emqx_plugin(?MODULE).
+
 -include("emqx_auth_ldap.hrl").
 
 %% Application callbacks
