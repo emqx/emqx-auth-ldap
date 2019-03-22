@@ -17,13 +17,18 @@
 -include_lib("emqx/include/emqx.hrl").
 -include_lib("eldap/include/eldap.hrl").
 
--export([check_acl/5, reload_acl/1, description/0]).
+-export([ check_acl/5
+        , reload_acl/1
+        , description/0
+        ]).
 
 -import(proplists, [get_value/2]).
 
 -import(lists, [concat/1]).
 
--import(emqx_auth_ldap_cli, [search/3, init_args/1]).
+-import(emqx_auth_ldap_cli, [ search/3
+                            , init_args/1
+                            ]).
 
 check_acl(#{username := <<$$, _/binary>>}, _PubSub, _Topic, _NoMatchAction, _State) ->
     ok;
