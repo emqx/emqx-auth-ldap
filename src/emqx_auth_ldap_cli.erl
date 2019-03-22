@@ -20,12 +20,17 @@
 
 -include_lib("emqx/include/emqx.hrl").
 
--import(proplists, [get_value/2, get_value/3]).
+-import(proplists, [ get_value/2
+                   , get_value/3
+                   ]).
 
 %% ecpool callback
 -export([connect/1]).
 
--export([search/2, search/3, init_args/1]).
+-export([ search/2
+        , search/3
+        , init_args/1
+        ]).
 
 %%--------------------------------------------------------------------
 %% LDAP Connect/Search

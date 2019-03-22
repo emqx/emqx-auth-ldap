@@ -19,15 +19,19 @@
 
 -import(proplists, [get_value/2]).
 
--import(emqx_auth_ldap_cli, [search/2, init_args/1]).
+-import(emqx_auth_ldap_cli, [ search/2
+                            , init_args/1
+                            ]).
 
--export([check/2, description/0]).
+-export([ check/2
+        , description/0
+        ]).
 
 -define(UNDEFINED(Username), (Username =:= undefined orelse Username =:= <<>>)).
 
 check(#{username := Username}, _State) 
   when ?UNDEFINED(Username) ->
-    {ok, #{result => username_or_password_undefined}};
+    {ok, #{auth_result => bad_username_or_password}};
 
 check(Credentials = #{username := Username, password := Password},
       State = #{password_attr := PasswdAttr}) ->
@@ -67,7 +71,7 @@ lookup_user(Username, #{username_attr := UidAttr,
             {error, username_or_password_error}
     end.
 
-check_pass(Password, Password, Credentials) -> {ok, Credentials#{result => success}};
+check_pass(Password, Password, Credentials) -> {ok, Credentials#{auth_result => success}};
 check_pass(_, _, _) -> {error, password_error}.
 
 format_password(Passhash, Password, Credentials) ->
