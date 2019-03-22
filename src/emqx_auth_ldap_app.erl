@@ -21,7 +21,10 @@
 -include("emqx_auth_ldap.hrl").
 
 %% Application callbacks
--export([start/2, prep_stop/1, stop/1]).
+-export([ start/2
+        , prep_stop/1
+        , stop/1
+        ]).
 
 start(_StartType, _StartArgs) ->
     {ok, Sup} = emqx_auth_ldap_sup:start_link(),

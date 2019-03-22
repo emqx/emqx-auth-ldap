@@ -19,9 +19,13 @@
 
 -import(proplists, [get_value/2]).
 
--import(emqx_auth_ldap_cli, [search/2, init_args/1]).
+-import(emqx_auth_ldap_cli, [ search/2
+                            , init_args/1
+                            ]).
 
--export([check/2, description/0]).
+-export([ check/2
+        , description/0
+        ]).
 
 -define(UNDEFINED(Username), (Username =:= undefined orelse Username =:= <<>>)).
 
