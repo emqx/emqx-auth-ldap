@@ -29,24 +29,35 @@
 
 -define(UNDEFINED(Username), (Username =:= undefined orelse Username =:= <<>>)).
 
-check(#{username := Username}, _State) 
+check(Credentials = #{username := Username}, _State) 
   when ?UNDEFINED(Username) ->
-    {ok, #{auth_result => bad_username_or_password}};
+    {ok, Credentials#{auth_result => bad_username_or_password}};
 
 check(Credentials = #{username := Username, password := Password},
       State = #{password_attr := PasswdAttr}) ->
-    case lookup_user(Username, State) of
-        undefined -> {ok, Credentials};
-        {error, Error} -> {error, Error};
-        Attributes ->
-            case get_value(PasswdAttr, Attributes) of
-                undefined ->
-                    logger:error("LDAP Search State: ~p, uid: ~p, result:~p", [State, Username, Attributes]),
-                    {ok, Credentials};
-                [Passhash1] ->
-                    format_password(Passhash1, Password, Credentials)
-            end
-    end.
+    CheckResult = case lookup_user(Username, State) of
+                      undefined -> {error, not_found};
+                      {error, Error} -> {error, Error};
+                      Attributes ->
+                          case get_value(PasswdAttr, Attributes) of
+                              undefined ->
+                                  logger:error("LDAP Search State: ~p, uid: ~p, result:~p", [State, Username, Attributes]),
+                                  {error, not_found};
+                              [Passhash1] ->
+                                  format_password(Passhash1, Password, Credentials)
+                          end
+                  end,
+    case CheckResult of
+        ok -> {stop, Credentials#{auth_result => success}};
+        {error, not_found} -> ok;
+        {error, ResultCode} -> 
+            logger:error("Auth from ldap failed: ~p", [ResultCode]),
+            {stop, Credentials#{auth_result => ResultCode}}
+    end;
+check(Credentials, Config) ->
+    ResultCode = insufficient_credentials,
+    logger:error("Auth from ldap failed: ~p, Configs: ~p", [ResultCode, Config]),
+    {ok, Credentials#{auth_result => ResultCode}}.
 
 lookup_user(Username, #{username_attr := UidAttr,
                         match_objectclass := ObjectClass,
@@ -71,8 +82,8 @@ lookup_user(Username, #{username_attr := UidAttr,
             {error, username_or_password_error}
     end.
 
-check_pass(Password, Password, Credentials) -> {ok, Credentials#{auth_result => success}};
-check_pass(_, _, _) -> {error, password_error}.
+check_pass(Password, Password, _Credentials) -> ok;
+check_pass(_, _, _) -> {error, bad_username_or_password}.
 
 format_password(Passhash, Password, Credentials) ->
     case do_format_password(Passhash, Password) of
