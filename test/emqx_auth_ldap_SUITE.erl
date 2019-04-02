@@ -77,13 +77,14 @@ check_auth(_) ->
                       username => <<"mqttuser0005">>,
                       password => <<"mqttuser0006">>,
                       zone => external},
-    ?assertMatch({ok, _Credentials}, emqx_access_control:authenticate(MqttUser1)),
-    ?assertMatch({ok, _Credentials}, emqx_access_control:authenticate(MqttUser2)),
-    ?assertMatch({ok, _Credentials}, emqx_access_control:authenticate(MqttUser3)),
-    ?assertMatch({ok, _Credentials}, emqx_access_control:authenticate(MqttUser4)),
-    ?assertMatch({ok, _Credentials}, emqx_access_control:authenticate(MqttUser5)),
+    ct:log("MqttUser: ~p", [emqx_access_control:authenticate(MqttUser1)]),
+    ?assertMatch({ok, #{auth_result := success}}, emqx_access_control:authenticate(MqttUser1)),
+    ?assertMatch({ok, #{auth_result := success}}, emqx_access_control:authenticate(MqttUser2)),
+    ?assertMatch({ok, #{auth_result := success}}, emqx_access_control:authenticate(MqttUser3)),
+    ?assertMatch({ok, #{auth_result := success}}, emqx_access_control:authenticate(MqttUser4)),
+    ?assertMatch({ok, #{auth_result := success}}, emqx_access_control:authenticate(MqttUser5)),
     ?assertEqual({error, not_authorized}, emqx_access_control:authenticate(NonExistUser1)),
-    ?assertEqual({error, not_authorized}, emqx_access_control:authenticate(NonExistUser2)).
+    ?assertEqual({error, bad_username_or_password}, emqx_access_control:authenticate(NonExistUser2)).
 
 check_acl(_) ->
     MqttUser = #{client_id => <<"mqttuser1">>, username => <<"mqttuser0001">>, zone => external},
