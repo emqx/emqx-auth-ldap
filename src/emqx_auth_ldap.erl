@@ -16,6 +16,7 @@
 
 -include_lib("emqx/include/emqx.hrl").
 -include_lib("eldap/include/eldap.hrl").
+-include_lib("emqx/include/logger.hrl").
 
 -import(proplists, [get_value/2]).
 
@@ -51,12 +52,12 @@ check(Credentials = #{username := Username, password := Password},
         ok -> {stop, Credentials#{auth_result => success}};
         {error, not_found} -> ok;
         {error, ResultCode} -> 
-            logger:error("Auth from ldap failed: ~p", [ResultCode]),
+            ?LOG(error, "[LDAP] Auth from ldap failed: ~p", [ResultCode]),
             {stop, Credentials#{auth_result => ResultCode}}
     end;
 check(Credentials, Config) ->
     ResultCode = insufficient_credentials,
-    logger:error("Auth from ldap failed: ~p, Configs: ~p", [ResultCode, Config]),
+    ?LOG(error, "[LDAP] Auth from ldap failed: ~p, Configs: ~p", [ResultCode, Config]),
     {ok, Credentials#{auth_result => ResultCode}}.
 
 lookup_user(Username, #{username_attr := UidAttr,
@@ -78,7 +79,7 @@ lookup_user(Username, #{username_attr := UidAttr,
                     end
             end;
         {error, Error} ->
-            logger:error("LDAP Search dn: ~p, filter: ~p, fail:~p", [DeviceDn, Filter, Error]),
+            ?LOG(error, "[LDAP] Search dn: ~p, filter: ~p, fail:~p", [DeviceDn, Filter, Error]),
             {error, username_or_password_error}
     end.
 
@@ -113,7 +114,6 @@ handle_passhash(HandleMatch, HandleNoMatch) ->
     fun(Passhash, Password) ->
             case re:run(Passhash, "(?<={)[^{}]+(?=})", [{capture, all, list}, global]) of
                 {match, [[HashType]]} ->
-                    io:format("~n Passhash:~p HashType:~p ~n", [Passhash, HashType]),
                     HandleMatch(list_to_atom(string:to_lower(HashType)), Passhash, Password);
                 _ ->
                     HandleNoMatch(Passhash, Password)
