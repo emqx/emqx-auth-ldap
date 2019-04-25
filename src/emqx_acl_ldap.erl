@@ -16,6 +16,7 @@
 
 -include_lib("emqx/include/emqx.hrl").
 -include_lib("eldap/include/eldap.hrl").
+-include_lib("emqx/include/logger.hrl").
 
 -export([ check_acl/5
         , reload_acl/1
@@ -43,7 +44,7 @@ check_acl(#{username := Username}, PubSub, Topic, _NoMatchAction,
                     subscribe -> "mqttSubscriptionTopic"
                 end,
     Attribute1 = "mqttPubSubTopic",
-    logger:debug("search dn:~p filter:~p, attribute:~p", [DeviceDn, Filter, Attribute]),
+    ?LOG(debug, "[LDAP] search dn:~p filter:~p, attribute:~p", [DeviceDn, Filter, Attribute]),
     case search(concat([UidAttr,"=", binary_to_list(Username), ",", DeviceDn]), Filter, [Attribute, Attribute1]) of
         {error, noSuchObject} ->
             ok;
@@ -54,7 +55,7 @@ check_acl(#{username := Username}, PubSub, Topic, _NoMatchAction,
                 ++ get_value(Attribute1, Entry#eldap_entry.attributes),
             match(Topic, Topics);
         Error ->
-            logger:error("LDAP search error:~p", [Error]),
+            ?LOG(error, "[LDAP] search error:~p", [Error]),
             {stop, deny}
     end.
 
