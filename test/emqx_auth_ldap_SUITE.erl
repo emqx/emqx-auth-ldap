@@ -37,16 +37,11 @@ all() ->
      check_acl].
 
 init_per_suite(Config) ->
-    [start_apps(App, SchemaFile, ConfigFile) ||
-        {App, SchemaFile, ConfigFile}
-            <- [{emqx, deps_path(emqx, "priv/emqx.schema"),
-                       deps_path(emqx, "etc/emqx.conf")},
-                {emqx_auth_ldap, local_path("priv/emqx_auth_ldap.schema"),
-                                 local_path("etc/emqx_auth_ldap.conf")}]],
+    emqx_ct_helpers:start_apps([emqx, emqx_auth_ldap], fun set_special_configs/1),
     Config.
 
 end_per_suite(_Config) ->
-    [application:stop(App) || App <- [emqx_auth_ldap, emqx]].
+    emqx_ct_helpers:stop_apps([emqx_auth_ldap, emqx]).
 
 check_auth(_) ->
     MqttUser1 = #{client_id => <<"mqttuser1">>,
