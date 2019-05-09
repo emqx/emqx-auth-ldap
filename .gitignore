@@ -20,3 +20,4 @@ test/ct.cover.spec
 _build/
 rebar.lock
 erlang.mk
+rebar3.crashdump
