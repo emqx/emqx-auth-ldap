@@ -28,12 +28,6 @@
         , description/0
         ]).
 
--define(UNDEFINED(Username), (Username =:= undefined orelse Username =:= <<>>)).
-
-check(Credentials = #{username := Username}, _State) 
-  when ?UNDEFINED(Username) ->
-    {ok, Credentials#{auth_result => bad_username_or_password}};
-
 check(Credentials = #{username := Username, password := Password},
       State = #{password_attr := PasswdAttr}) ->
     CheckResult = case lookup_user(Username, State) of
@@ -49,16 +43,12 @@ check(Credentials = #{username := Username, password := Password},
                           end
                   end,
     case CheckResult of
-        ok -> {stop, Credentials#{auth_result => success}};
+        ok -> {stop, Credentials#{auth_result => success, anonymous => false}};
         {error, not_found} -> ok;
         {error, ResultCode} -> 
             ?LOG(error, "[LDAP] Auth from ldap failed: ~p", [ResultCode]),
-            {stop, Credentials#{auth_result => ResultCode}}
-    end;
-check(Credentials, Config) ->
-    ResultCode = insufficient_credentials,
-    ?LOG(error, "[LDAP] Auth from ldap failed: ~p, Configs: ~p", [ResultCode, Config]),
-    {ok, Credentials#{auth_result => ResultCode}}.
+            {stop, Credentials#{auth_result => ResultCode, anonymous => false}}
+    end.
 
 lookup_user(Username, #{username_attr := UidAttr,
                         match_objectclass := ObjectClass,
