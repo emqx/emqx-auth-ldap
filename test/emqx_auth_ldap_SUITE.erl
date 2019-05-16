@@ -38,6 +38,7 @@ all() ->
 
 init_per_suite(Config) ->
     emqx_ct_helpers:start_apps([emqx, emqx_auth_ldap], fun set_special_configs/1),
+    emqx_mod_acl_internal:unload([]),
     Config.
 
 end_per_suite(_Config) ->
@@ -108,6 +109,9 @@ set_special_configs(emqx) ->
     application:set_env(emqx, allow_anonymous, false),
     application:set_env(emqx, enable_acl_cache, false),
     application:set_env(emqx, acl_nomatch, deny),
+    AclFilePath = filename:join(["test", "emqx_SUITE_data", "acl.conf"]),
+    application:set_env(emqx, acl_file,
+		        emqx_ct_helpers:deps_path(emqx, AclFilePath)),
     LoadedPluginPath = filename:join(["test", "emqx_SUITE_data", "loaded_plugins"]),
     application:set_env(emqx, plugins_loaded_file,
                         emqx_ct_helpers:deps_path(emqx, LoadedPluginPath));
