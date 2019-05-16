@@ -21,3 +21,5 @@ _build/
 rebar.lock
 erlang.mk
 rebar3.crashdump
+.rebar3/
+etc/emqx_auth_ldap.conf.rendered

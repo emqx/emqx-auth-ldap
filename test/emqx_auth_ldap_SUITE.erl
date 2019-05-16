@@ -38,6 +38,7 @@ all() ->
 
 init_per_suite(Config) ->
     emqx_ct_helpers:start_apps([emqx, emqx_auth_ldap], fun set_special_configs/1),
+    emqx_mod_acl_internal:unload([]),
     Config.
 
 end_per_suite(_Config) ->
@@ -104,37 +105,20 @@ check_acl(_) ->
     deny = emqx_access_control:check_acl(MqttUser, subscribe, <<"mqttuser0001/req/+/mqttuser0002">>),
     ok.
     
-start_apps(App, SchemaFile, ConfigFile) ->
-    read_schema_configs(App, SchemaFile, ConfigFile),
-    set_special_configs(App),
-    application:ensure_all_started(App).
-
-read_schema_configs(App, SchemaFile, ConfigFile) ->
-    ct:pal("Read configs - SchemaFile: ~p, ConfigFile: ~p", [SchemaFile, ConfigFile]),
-    Schema = cuttlefish_schema:files([SchemaFile]),
-    Conf = conf_parse:file(ConfigFile),
-    NewConfig = cuttlefish_generator:map(Schema, Conf),
-    Vals = proplists:get_value(App, NewConfig, []),
-    [application:set_env(App, Par, Value) || {Par, Value} <- Vals].
-
 set_special_configs(emqx) ->
     application:set_env(emqx, allow_anonymous, false),
     application:set_env(emqx, enable_acl_cache, false),
     application:set_env(emqx, acl_nomatch, deny),
-    application:set_env(emqx, plugins_loaded_file, deps_path(emqx, "test/emqx_SUITE_data/loaded_plugins"));
+    AclFilePath = filename:join(["test", "emqx_SUITE_data", "acl.conf"]),
+    application:set_env(emqx, acl_file,
+		        emqx_ct_helpers:deps_path(emqx, AclFilePath)),
+    LoadedPluginPath = filename:join(["test", "emqx_SUITE_data", "loaded_plugins"]),
+    application:set_env(emqx, plugins_loaded_file,
+                        emqx_ct_helpers:deps_path(emqx, LoadedPluginPath));
 
 set_special_configs(emqx_auth_ldap) ->
     application:set_env(emqx_auth_ldap, device_dn, "ou=testdevice, dc=emqx, dc=io");
+
 set_special_configs(_App) ->
     ok.
 
-local_path(RelativePath) ->
-    deps_path(emqx_auth_ldap, RelativePath).
-
-deps_path(App, RelativePath) ->
-    Path0 = code:priv_dir(App),
-    Path = case file:read_link(Path0) of
-               {ok, Resolved} -> Resolved;
-               {error, _} -> Path0
-            end,
-    filename:join([Path, "..", RelativePath]).
