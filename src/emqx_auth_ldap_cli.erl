@@ -19,6 +19,7 @@
 -include("emqx_auth_ldap.hrl").
 
 -include_lib("emqx/include/emqx.hrl").
+-include_lib("emqx/include/logger.hrl").
 
 -import(proplists, [ get_value/2
                    , get_value/3
@@ -49,7 +50,7 @@ connect(Opts) ->
                        false ->
                            [{port, Port}, {timeout, Timeout}]
                    end,
-    logger:debug("Connecting to OpenLDAP server: ~p, Opts:~p ...", [Servers, LdapOpts]),
+    ?LOG(debug, "[LDAP] Connecting to OpenLDAP server: ~p, Opts:~p ...", [Servers, LdapOpts]),
     case eldap2:open(Servers, LdapOpts) of
         {ok, LDAP} ->
             try eldap2:simple_bind(LDAP, BindDn, BindPassword) of
