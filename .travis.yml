@@ -1,12 +1,22 @@
-language: erlang
+language: bash
 
-otp_release:
-   - 21.3
+sudo: required
 
-before_install:
-    - git clone https://github.com/erlang/rebar3.git; cd rebar3; ./bootstrap; sudo mv rebar3 /usr/local/bin/; cd ..
+services:
+  - docker
+
+install:
+  - cp ./emqx.io.ldif ./emqx.schema ./.ci/emqx-ldap
+  - docker-compose -f ./.ci/docker-compose-travis.yml -p tests up -d --build
+
+before_script:
+  - docker exec -i tests_erlang_1 sh -c "sed -i '/auth.ldap.servers/c auth.ldap.servers = ldap_server' ./emqx_auth_ldap/etc/emqx_auth_ldap.conf"
 
 script:
-  - make compile
+  - docker exec -i tests_erlang_1 sh -c "make -C /emqx_auth_ldap compile"
+  - docker exec -i tests_erlang_1 sh -c "make -C /emqx_auth_ldap eunit"
+  - docker exec -i tests_erlang_1 sh -c "make -C /emqx_auth_ldap ct"
 
-sudo: false
+after_script:
+  - docker-compose -f ./.ci/docker-compose-travis.yml -p tests down 
+  - rm -f ./.ci/emqx-ldap/emqx.io.ldif ./.ci/emqx-ldap/emqx.schema
