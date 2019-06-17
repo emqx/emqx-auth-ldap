@@ -18,7 +18,8 @@
 -include_lib("eldap/include/eldap.hrl").
 -include_lib("emqx/include/logger.hrl").
 
--export([ check_acl/5
+-export([ register_metrics/0
+        , check_acl/5
         , reload_acl/1
         , description/0
         ]).
@@ -29,10 +30,20 @@
 
 -import(emqx_auth_ldap_cli, [search/3]).
 
-check_acl(#{username := <<$$, _/binary>>}, _PubSub, _Topic, _NoMatchAction, _State) ->
+register_metrics() ->
+    [emqx_metrics:new(MetricName) || MetricName <- ['acl.ldap.allow', 'acl.ldap.deny', 'acl.ldap.ignore']].
+
+check_acl(Credentials, PubSub, Topic, NoMatchAction, State) ->
+    case do_check_acl(Credentials, PubSub, Topic, NoMatchAction, State) of
+        ok -> emqx_metrics:inc('acl.ldap.ignore'), ok;
+        {stop, allow} -> emqx_metrics:inc('acl.ldap.allow'), {stop, allow};
+        {stop, deny} -> emqx_metrics:inc('acl.ldap.deny'), {stop, deny}
+    end.
+
+do_check_acl(#{username := <<$$, _/binary>>}, _PubSub, _Topic, _NoMatchAction, _State) ->
     ok;
 
-check_acl(#{username := Username}, PubSub, Topic, _NoMatchAction,
+do_check_acl(#{username := Username}, PubSub, Topic, _NoMatchAction,
           #{device_dn := DeviceDn,
             match_objectclass := ObjectClass,
             username_attr := UidAttr}) ->
