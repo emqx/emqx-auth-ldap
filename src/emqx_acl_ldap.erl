@@ -27,9 +27,7 @@
 
 -import(lists, [concat/1]).
 
--import(emqx_auth_ldap_cli, [ search/3
-                            , init_args/1
-                            ]).
+-import(emqx_auth_ldap_cli, [search/3]).
 
 check_acl(#{username := <<$$, _/binary>>}, _PubSub, _Topic, _NoMatchAction, _State) ->
     ok;
