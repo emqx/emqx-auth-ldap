@@ -20,13 +20,15 @@
 
 -import(proplists, [get_value/2]).
 
--import(emqx_auth_ldap_cli, [ search/2
-                            , init_args/1
-                            ]).
+-import(emqx_auth_ldap_cli, [search/2]).
 
--export([ check/2
+-export([ register_metrics/0
+        , check/2
         , description/0
         ]).
+
+register_metrics() ->
+    [emqx_metrics:new(MetricName) || MetricName <- ['auth.ldap.success', 'auth.ldap.failure', 'auth.ldap.ignore']].
 
 check(Credentials = #{username := Username, password := Password},
       State = #{password_attr := PasswdAttr}) ->
@@ -43,10 +45,14 @@ check(Credentials = #{username := Username, password := Password},
                           end
                   end,
     case CheckResult of
-        ok -> {stop, Credentials#{auth_result => success, anonymous => false}};
-        {error, not_found} -> ok;
+        ok ->
+            emqx_metrics:inc('auth.ldap.success'),
+            {stop, Credentials#{auth_result => success, anonymous => false}};
+        {error, not_found} ->
+            emqx_metrics:inc('auth.ldap.ignore'), ok;
         {error, ResultCode} -> 
             ?LOG(error, "[LDAP] Auth from ldap failed: ~p", [ResultCode]),
+            emqx_metrics:inc('auth.ldap.failure'),
             {stop, Credentials#{auth_result => ResultCode, anonymous => false}}
     end.
 
