@@ -23,14 +23,14 @@
 -import(emqx_auth_ldap_cli, [search/2]).
 
 -export([ register_metrics/0
-        , check/2
+        , check/3
         , description/0
         ]).
 
 register_metrics() ->
     [emqx_metrics:new(MetricName) || MetricName <- ['auth.ldap.success', 'auth.ldap.failure', 'auth.ldap.ignore']].
 
-check(Credentials = #{username := Username, password := Password},
+check(Credentials = #{username := Username, password := Password}, AuthResult,
       State = #{password_attr := PasswdAttr}) ->
     CheckResult = case lookup_user(Username, State) of
                       undefined -> {error, not_found};
@@ -47,13 +47,13 @@ check(Credentials = #{username := Username, password := Password},
     case CheckResult of
         ok ->
             emqx_metrics:inc('auth.ldap.success'),
-            {stop, Credentials#{auth_result => success, anonymous => false}};
+            {stop, AuthResult#{auth_result => success, anonymous => false}};
         {error, not_found} ->
             emqx_metrics:inc('auth.ldap.ignore'), ok;
-        {error, ResultCode} -> 
+        {error, ResultCode} ->
             ?LOG(error, "[LDAP] Auth from ldap failed: ~p", [ResultCode]),
             emqx_metrics:inc('auth.ldap.failure'),
-            {stop, Credentials#{auth_result => ResultCode, anonymous => false}}
+            {stop, AuthResult#{auth_result => ResultCode, anonymous => false}}
     end.
 
 lookup_user(Username, #{username_attr := UidAttr,
