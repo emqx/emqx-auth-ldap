@@ -1,4 +1,5 @@
-%% Copyright (c) 2013-2019 EMQ Technologies Co., Ltd. All Rights Reserved.
+%%--------------------------------------------------------------------
+%% Copyright (c) 2019 EMQ Technologies Co., Ltd. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -11,6 +12,7 @@
 %% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
+%%--------------------------------------------------------------------
 
 -module(emqx_auth_ldap).
 
@@ -27,10 +29,16 @@
         , description/0
         ]).
 
-register_metrics() ->
-    [emqx_metrics:new(MetricName) || MetricName <- ['auth.ldap.success', 'auth.ldap.failure', 'auth.ldap.ignore']].
+-define(AUTH_METRICS,
+        ['auth.ldap.success',
+         'auth.ldap.failure',
+         'auth.ldap.ignore'
+        ]).
 
-check(Credentials = #{username := Username, password := Password}, AuthResult,
+register_metrics() ->
+    [emqx_metrics:new(MetricName) || MetricName <- ?AUTH_METRICS].
+
+check(Client= #{username := Username, password := Password}, AuthResult,
       State = #{password_attr := PasswdAttr}) ->
     CheckResult = case lookup_user(Username, State) of
                       undefined -> {error, not_found};
@@ -38,10 +46,11 @@ check(Credentials = #{username := Username, password := Password}, AuthResult,
                       Attributes ->
                           case get_value(PasswdAttr, Attributes) of
                               undefined ->
-                                  logger:error("LDAP Search State: ~p, uid: ~p, result:~p", [State, Username, Attributes]),
+                                  logger:error("LDAP Search State: ~p, uid: ~p, result:~p",
+                                               [State, Username, Attributes]),
                                   {error, not_found};
                               [Passhash1] ->
-                                  format_password(Passhash1, Password, Credentials)
+                                  format_password(Passhash1, Password, Client)
                           end
                   end,
     case CheckResult of
@@ -79,24 +88,24 @@ lookup_user(Username, #{username_attr := UidAttr,
             {error, username_or_password_error}
     end.
 
-check_pass(Password, Password, _Credentials) -> ok;
+check_pass(Password, Password, _Client) -> ok;
 check_pass(_, _, _) -> {error, bad_username_or_password}.
 
-format_password(Passhash, Password, Credentials) ->
+format_password(Passhash, Password, Client) ->
     case do_format_password(Passhash, Password) of
         {error, Error2} ->
             {error, Error2};
         {Passhash1, Password1} ->
-            check_pass(Passhash1, Password1, Credentials)
+            check_pass(Passhash1, Password1, Client)
     end.
 
 do_format_password(Passhash, Password) ->
     Base64PasshashHandler = handle_passhash(fun(HashType, Passhash1, Password1) ->
                                                 Passhash2 = binary_to_list(base64:decode(Passhash1)),
-                                                resolve_passhash(HashType, Passhash2, Password1) 
+                                                resolve_passhash(HashType, Passhash2, Password1)
                                             end,
-                                            fun(_Passhash, _Password) -> 
-                                                {error, password_error} 
+                                            fun(_Passhash, _Password) ->
+                                                {error, password_error}
                                             end),
     PasshashHandler = handle_passhash(fun resolve_passhash/3,
                                       Base64PasshashHandler),
@@ -126,3 +135,4 @@ do_resolve(HashType, Passhash, Password) ->
     {list_to_binary(Passhash), Password1}.
 
 description() -> "LDAP Authentication Plugin".
+

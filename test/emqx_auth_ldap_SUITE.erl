@@ -1,4 +1,5 @@
-%% Copyright (c) 2013-2019 EMQ Technologies Co., Ltd. All Rights Reserved.
+%%--------------------------------------------------------------------
+%% Copyright (c) 2019 EMQ Technologies Co., Ltd. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -11,12 +12,16 @@
 %% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
+%%--------------------------------------------------------------------
 
 -module(emqx_auth_ldap_SUITE).
 
 -compile(export_all).
-
 -compile(no_warning_export).
+
+-include_lib("emqx/include/emqx.hrl").
+-include_lib("eunit/include/eunit.hrl").
+-include_lib("common_test/include/ct.hrl").
 
 -define(PID, emqx_auth_ldap).
 
@@ -25,12 +30,6 @@
 -define(DeviceDN, "ou=test_device,dc=emqx,dc=io").
 
 -define(AuthDN, "ou=test_auth,dc=emqx,dc=io").
-
--include_lib("emqx/include/emqx.hrl").
-
--include_lib("eunit/include/eunit.hrl").
-
--include_lib("common_test/include/ct.hrl").
 
 all() ->
     [check_auth,
@@ -104,7 +103,7 @@ check_acl(_) ->
     deny = emqx_access_control:check_acl(MqttUser, publish, <<"mqttuser0001/req/mqttuser0002/+">>),
     deny = emqx_access_control:check_acl(MqttUser, subscribe, <<"mqttuser0001/req/+/mqttuser0002">>),
     ok.
-    
+
 set_special_configs(emqx) ->
     application:set_env(emqx, allow_anonymous, false),
     application:set_env(emqx, enable_acl_cache, false),
