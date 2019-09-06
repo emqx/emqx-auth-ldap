@@ -1,4 +1,5 @@
-%% Copyright (c) 2013-2019 EMQ Technologies Co., Ltd. All Rights Reserved.
+%%--------------------------------------------------------------------
+%% Copyright (c) 2019 EMQ Technologies Co., Ltd. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -11,6 +12,7 @@
 %% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
+%%--------------------------------------------------------------------
 
 -module(emqx_acl_ldap).
 
@@ -26,15 +28,19 @@
 
 -import(proplists, [get_value/2]).
 
--import(lists, [concat/1]).
-
 -import(emqx_auth_ldap_cli, [search/3]).
 
-register_metrics() ->
-    [emqx_metrics:new(MetricName) || MetricName <- ['acl.ldap.allow', 'acl.ldap.deny', 'acl.ldap.ignore']].
+-define(ACL_METRICS,
+        ['acl.ldap.allow',
+         'acl.ldap.deny',
+         'acl.ldap.ignore'
+        ]).
 
-check_acl(Credentials, PubSub, Topic, NoMatchAction, State) ->
-    case do_check_acl(Credentials, PubSub, Topic, NoMatchAction, State) of
+register_metrics() ->
+    [emqx_metrics:new(MetricName) || MetricName <- ?ACL_METRICS].
+
+check_acl(Client, PubSub, Topic, NoMatchAction, State) ->
+    case do_check_acl(Client, PubSub, Topic, NoMatchAction, State) of
         ok -> emqx_metrics:inc('acl.ldap.ignore'), ok;
         {stop, allow} -> emqx_metrics:inc('acl.ldap.allow'), {stop, allow};
         {stop, deny} -> emqx_metrics:inc('acl.ldap.deny'), {stop, deny}
@@ -44,17 +50,19 @@ do_check_acl(#{username := <<$$, _/binary>>}, _PubSub, _Topic, _NoMatchAction, _
     ok;
 
 do_check_acl(#{username := Username}, PubSub, Topic, _NoMatchAction,
-          #{device_dn := DeviceDn,
-            match_objectclass := ObjectClass,
-            username_attr := UidAttr}) ->
+             #{device_dn         := DeviceDn,
+               match_objectclass := ObjectClass,
+               username_attr     := UidAttr}) ->
     Filter = eldap2:equalityMatch("objectClass", ObjectClass),
     Attribute = case PubSub of
                     publish   -> "mqttPublishTopic";
                     subscribe -> "mqttSubscriptionTopic"
                 end,
     Attribute1 = "mqttPubSubTopic",
-    ?LOG(debug, "[LDAP] search dn:~p filter:~p, attribute:~p", [DeviceDn, Filter, Attribute]),
-    case search(concat([UidAttr,"=", binary_to_list(Username), ",", DeviceDn]), Filter, [Attribute, Attribute1]) of
+    ?LOG(debug, "[LDAP] search dn:~p filter:~p, attribute:~p",
+         [DeviceDn, Filter, Attribute]),
+    BaseDN = lists:concat([UidAttr, "=", binary_to_list(Username), ",", DeviceDn]),
+    case search(BaseDN, Filter, [Attribute, Attribute1]) of
         {error, noSuchObject} ->
             ok;
         {ok, #eldap_search_result{entries = []}} ->
