@@ -1,4 +1,5 @@
-%% Copyright (c) 2013-2019 EMQ Technologies Co., Ltd. All Rights Reserved.
+%%--------------------------------------------------------------------
+%% Copyright (c) 2019 EMQ Technologies Co., Ltd. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -11,6 +12,7 @@
 %% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
+%%--------------------------------------------------------------------
 
 -module(emqx_auth_ldap_cli).
 
@@ -21,16 +23,17 @@
 -include_lib("emqx/include/emqx.hrl").
 -include_lib("emqx/include/logger.hrl").
 
--import(proplists, [ get_value/2
-                   , get_value/3
-                   ]).
-
 %% ecpool callback
 -export([connect/1]).
 
 -export([ search/2
         , search/3
         , init_args/1
+        ]).
+
+-import(proplists,
+        [ get_value/2
+        , get_value/3
         ]).
 
 %%--------------------------------------------------------------------
@@ -54,31 +57,29 @@ connect(Opts) ->
     case eldap2:open(Servers, LdapOpts) of
         {ok, LDAP} ->
             try eldap2:simple_bind(LDAP, BindDn, BindPassword) of
-                ok -> 
-                    {ok, LDAP};
+                ok -> {ok, LDAP};
                 {error, Error} ->
                     {error, Error}
             catch
-                error : Reason ->
-                    {error, Reason}
+                error:Reason -> {error, Reason}
             end;
         {error, Reason} ->
             {error, Reason}
     end.
 
 search(Base, Filter) ->
-    ecpool:with_client(?APP, fun(C) -> 
-        eldap2:search(C, [{base, Base}, 
-                         {filter, Filter},
-                         {deref, eldap2:derefFindingBaseObj()}]) 
-    end).
+    ecpool:with_client(?APP, fun(C) ->
+                                 eldap2:search(C, [{base, Base},
+                                                   {filter, Filter},
+                                                   {deref, eldap2:derefFindingBaseObj()}])
+                             end).
 
 search(Base, Filter, Attributes) ->
-    ecpool:with_client(?APP, fun(C) -> 
+    ecpool:with_client(?APP, fun(C) ->
                                  eldap2:search(C, [{base, Base},
                                                    {filter, Filter},
                                                    {attributes, Attributes},
-                                                   {deref, eldap2:derefFindingBaseObj()}]) 
+                                                   {deref, eldap2:derefFindingBaseObj()}])
                              end).
 
 init_args(ENVS) ->
@@ -90,3 +91,4 @@ init_args(ENVS) ->
            match_objectclass => ObjectClass,
            username_attr => UidAttr,
            password_attr => PasswdAttr}}.
+

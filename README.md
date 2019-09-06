@@ -60,7 +60,7 @@ moduleload back_bdb.la
 Import EMQX User Data
 ----------------------
 
-Use ldapadd 
+Use ldapadd
 ```
 # ldapadd -x -D "cn=root,dc=emqx,dc=io" -w public -f emqx.com.ldif
 ```
@@ -77,7 +77,7 @@ Launch slapd
 
 Test
 -------
-After configure slapd correctly and launch slapd successfully. 
+After configure slapd correctly and launch slapd successfully.
 You could execute
 
 ``` bash
