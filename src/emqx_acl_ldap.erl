@@ -36,11 +36,12 @@
          'acl.ldap.ignore'
         ]).
 
+-spec(register_metrics() -> ok).
 register_metrics() ->
-    [emqx_metrics:new(MetricName) || MetricName <- ?ACL_METRICS].
+    lists:foreach(fun emqx_metrics:new/1, ?ACL_METRICS).
 
-check_acl(Client, PubSub, Topic, NoMatchAction, State) ->
-    case do_check_acl(Client, PubSub, Topic, NoMatchAction, State) of
+check_acl(ClientInfo, PubSub, Topic, NoMatchAction, State) ->
+    case do_check_acl(ClientInfo, PubSub, Topic, NoMatchAction, State) of
         ok -> emqx_metrics:inc('acl.ldap.ignore'), ok;
         {stop, allow} -> emqx_metrics:inc('acl.ldap.allow'), {stop, allow};
         {stop, deny} -> emqx_metrics:inc('acl.ldap.deny'), {stop, deny}

@@ -47,12 +47,12 @@ stop(_State) ->
     ok.
 
 load_auth_hook(DeviceDn) ->
-    emqx_auth_ldap:register_metrics(),
+    ok = emqx_auth_ldap:register_metrics(),
     Params = maps:from_list(DeviceDn),
     emqx:hook('client.authenticate', fun emqx_auth_ldap:check/3, [Params]).
 
 load_acl_hook(DeviceDn) ->
-    emqx_acl_ldap:register_metrics(),
+    ok = emqx_acl_ldap:register_metrics(),
     Params = maps:from_list(DeviceDn),
     emqx:hook('client.check_acl', fun emqx_acl_ldap:check_acl/5 , [Params]).
 
