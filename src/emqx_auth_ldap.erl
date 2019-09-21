@@ -35,10 +35,11 @@
          'auth.ldap.ignore'
         ]).
 
+-spec(register_metrics() -> ok).
 register_metrics() ->
-    [emqx_metrics:new(MetricName) || MetricName <- ?AUTH_METRICS].
+    lists:foreach(fun emqx_metrics:new/1, ?AUTH_METRICS).
 
-check(Client= #{username := Username, password := Password}, AuthResult,
+check(ClientInfo = #{username := Username, password := Password}, AuthResult,
       State = #{password_attr := PasswdAttr}) ->
     CheckResult = case lookup_user(Username, State) of
                       undefined -> {error, not_found};
@@ -50,18 +51,18 @@ check(Client= #{username := Username, password := Password}, AuthResult,
                                                [State, Username, Attributes]),
                                   {error, not_found};
                               [Passhash1] ->
-                                  format_password(Passhash1, Password, Client)
+                                  format_password(Passhash1, Password, ClientInfo)
                           end
                   end,
     case CheckResult of
         ok ->
-            emqx_metrics:inc('auth.ldap.success'),
+            ok = emqx_metrics:inc('auth.ldap.success'),
             {stop, AuthResult#{auth_result => success, anonymous => false}};
         {error, not_found} ->
-            emqx_metrics:inc('auth.ldap.ignore'), ok;
+            emqx_metrics:inc('auth.ldap.ignore');
         {error, ResultCode} ->
+            ok = emqx_metrics:inc('auth.ldap.failure'),
             ?LOG(error, "[LDAP] Auth from ldap failed: ~p", [ResultCode]),
-            emqx_metrics:inc('auth.ldap.failure'),
             {stop, AuthResult#{auth_result => ResultCode, anonymous => false}}
     end.
 
@@ -88,27 +89,27 @@ lookup_user(Username, #{username_attr := UidAttr,
             {error, username_or_password_error}
     end.
 
-check_pass(Password, Password, _Client) -> ok;
+check_pass(Password, Password, _ClientInfo) -> ok;
 check_pass(_, _, _) -> {error, bad_username_or_password}.
 
-format_password(Passhash, Password, Client) ->
+format_password(Passhash, Password, ClientInfo) ->
     case do_format_password(Passhash, Password) of
         {error, Error2} ->
             {error, Error2};
         {Passhash1, Password1} ->
-            check_pass(Passhash1, Password1, Client)
+            check_pass(Passhash1, Password1, ClientInfo)
     end.
 
 do_format_password(Passhash, Password) ->
-    Base64PasshashHandler = handle_passhash(fun(HashType, Passhash1, Password1) ->
-                                                Passhash2 = binary_to_list(base64:decode(Passhash1)),
-                                                resolve_passhash(HashType, Passhash2, Password1)
-                                            end,
-                                            fun(_Passhash, _Password) ->
-                                                {error, password_error}
-                                            end),
-    PasshashHandler = handle_passhash(fun resolve_passhash/3,
-                                      Base64PasshashHandler),
+    Base64PasshashHandler =
+    handle_passhash(fun(HashType, Passhash1, Password1) ->
+                            Passhash2 = binary_to_list(base64:decode(Passhash1)),
+                            resolve_passhash(HashType, Passhash2, Password1)
+                    end,
+                    fun(_Passhash, _Password) ->
+                            {error, password_error}
+                    end),
+    PasshashHandler = handle_passhash(fun resolve_passhash/3, Base64PasshashHandler),
     PasshashHandler(Passhash, Password).
 
 resolve_passhash(HashType, Passhash, Password) ->
