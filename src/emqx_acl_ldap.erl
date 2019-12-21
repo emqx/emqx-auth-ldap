@@ -16,6 +16,8 @@
 
 -module(emqx_acl_ldap).
 
+-include("emqx_auth_ldap.hrl").
+
 -include_lib("emqx/include/emqx.hrl").
 -include_lib("eldap/include/eldap.hrl").
 -include_lib("emqx/include/logger.hrl").
@@ -30,21 +32,15 @@
 
 -import(emqx_auth_ldap_cli, [search/3]).
 
--define(ACL_METRICS,
-        ['acl.ldap.allow',
-         'acl.ldap.deny',
-         'acl.ldap.ignore'
-        ]).
-
 -spec(register_metrics() -> ok).
 register_metrics() ->
     lists:foreach(fun emqx_metrics:new/1, ?ACL_METRICS).
 
 check_acl(ClientInfo, PubSub, Topic, NoMatchAction, State) ->
     case do_check_acl(ClientInfo, PubSub, Topic, NoMatchAction, State) of
-        ok -> emqx_metrics:inc('acl.ldap.ignore'), ok;
-        {stop, allow} -> emqx_metrics:inc('acl.ldap.allow'), {stop, allow};
-        {stop, deny} -> emqx_metrics:inc('acl.ldap.deny'), {stop, deny}
+        ok -> emqx_metrics:inc(?ACL_METRICS(ignore)), ok;
+        {stop, allow} -> emqx_metrics:inc(?ACL_METRICS(allow)), {stop, allow};
+        {stop, deny} -> emqx_metrics:inc(?ACL_METRICS(deny)), {stop, deny}
     end.
 
 do_check_acl(#{username := <<$$, _/binary>>}, _PubSub, _Topic, _NoMatchAction, _State) ->
