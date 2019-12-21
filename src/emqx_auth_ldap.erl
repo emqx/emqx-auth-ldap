@@ -16,6 +16,8 @@
 
 -module(emqx_auth_ldap).
 
+-include("emqx_auth_ldap.hrl").
+
 -include_lib("emqx/include/emqx.hrl").
 -include_lib("eldap/include/eldap.hrl").
 -include_lib("emqx/include/logger.hrl").
@@ -27,12 +29,6 @@
 -export([ register_metrics/0
         , check/3
         , description/0
-        ]).
-
--define(AUTH_METRICS,
-        ['auth.ldap.success',
-         'auth.ldap.failure',
-         'auth.ldap.ignore'
         ]).
 
 -spec(register_metrics() -> ok).
@@ -56,12 +52,12 @@ check(ClientInfo = #{username := Username, password := Password}, AuthResult,
                   end,
     case CheckResult of
         ok ->
-            ok = emqx_metrics:inc('auth.ldap.success'),
+            ok = emqx_metrics:inc(?AUTH_METRICS(success)),
             {stop, AuthResult#{auth_result => success, anonymous => false}};
         {error, not_found} ->
-            emqx_metrics:inc('auth.ldap.ignore');
+            emqx_metrics:inc(?AUTH_METRICS(ignore));
         {error, ResultCode} ->
-            ok = emqx_metrics:inc('auth.ldap.failure'),
+            ok = emqx_metrics:inc(?AUTH_METRICS(failure)),
             ?LOG(error, "[LDAP] Auth from ldap failed: ~p", [ResultCode]),
             {stop, AuthResult#{auth_result => ResultCode, anonymous => false}}
     end.
