@@ -7,7 +7,7 @@ services:
 
 install:
   - cp ./emqx.io.ldif ./emqx.schema ./.ci/emqx-ldap
-  - docker-compose -f ./.ci/docker-compose-travis.yml -p tests up -d --build
+  - docker-compose -f ./.ci/docker-compose.yml -p tests up -d --build
 
 before_script:
   - docker exec -i tests_erlang_1 sh -c "sed -i '/auth.ldap.servers/c auth.ldap.servers = ldap_server' ./emqx_auth_ldap/etc/emqx_auth_ldap.conf"
@@ -18,5 +18,5 @@ script:
   - docker exec -i tests_erlang_1 sh -c "make -C /emqx_auth_ldap ct"
 
 after_script:
-  - docker-compose -f ./.ci/docker-compose-travis.yml -p tests down 
+  - docker-compose -f ./.ci/docker-compose.yml -p tests down 
   - rm -f ./.ci/emqx-ldap/emqx.io.ldif ./.ci/emqx-ldap/emqx.schema

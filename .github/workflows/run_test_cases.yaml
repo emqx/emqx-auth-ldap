@@ -15,7 +15,7 @@ jobs:
             - name: prepare
               run: |
                 cp ./emqx.io.ldif ./emqx.schema ./.ci/emqx-ldap
-                docker-compose -f ./.ci/docker-compose-travis.yml -p tests up -d --build
+                docker-compose -f ./.ci/docker-compose.yml -p tests up -d --build
             - name: run test cases
               run: |
                 docker exec -i tests_erlang_1 sh -c "sed -i '/auth.ldap.servers/c auth.ldap.servers = ldap_server' ./emqx_auth_ldap/etc/emqx_auth_ldap.conf"
