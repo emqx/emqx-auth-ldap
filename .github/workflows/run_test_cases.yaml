@@ -11,12 +11,17 @@ jobs:
             
         steps:
             - uses: actions/checkout@v1
+            - name: prepare
+              run: |
+                cp ./emqx.io.ldif ./emqx.schema .github/workflows/emqx-ldap
+                docker-compose -f .github/workflows/docker-compose.yml -p tests up -d --build
             - name: run test cases
               run: |
-                make xref
-                make eunit  
-                make ct
-                make cover
+                docker exec -i tests_erlang_1 sh -c "sed -i '/auth.ldap.servers/c auth.ldap.servers = ldap_server' ./emqx_auth_ldap/etc/emqx_auth_ldap.conf"
+                docker exec -i tests_erlang_1 sh -c "make -C /emqx_auth_ldap xref"
+                docker exec -i tests_erlang_1 sh -c "make -C /emqx_auth_ldap eunit"
+                docker exec -i tests_erlang_1 sh -c "make -C /emqx_auth_ldap ct"
+                docker exec -i tests_erlang_1 sh -c "make -C /emqx_auth_ldap cover"
             - uses: actions/upload-artifact@v1
               if: always()
               with:
