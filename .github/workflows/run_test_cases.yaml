@@ -6,9 +6,6 @@ jobs:
     run_test_cases:
         runs-on: ubuntu-latest
       
-        container:
-            image: erlang:22.1
-            
         steps:
             - name: Install docker-compose
               run: | 
