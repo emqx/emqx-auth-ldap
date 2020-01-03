@@ -19,6 +19,9 @@ eunit: compile
 xref:
 	$(REBAR) xref
 
+cover:
+	$(REBAR) cover
+
 clean:
 	@rm -rf _build
 	@rm -f data/app.*.config data/vm.*.args rebar.lock
