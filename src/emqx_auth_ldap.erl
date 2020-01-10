@@ -29,6 +29,8 @@
 -export([ register_metrics/0
         , check/3
         , description/0
+        , replace_vars/2
+        , compile_filters/2
         ]).
 
 -spec(register_metrics() -> ok).
@@ -37,7 +39,7 @@ register_metrics() ->
 
 check(ClientInfo = #{username := Username, password := Password}, AuthResult,
       State = #{password_attr := PasswdAttr}) ->
-    CheckResult = case lookup_user(Username, State) of
+    CheckResult = case lookup_user(Username, Password, State) of
                       undefined -> {error, not_found};
                       {error, Error} -> {error, Error};
                       Attributes ->
@@ -62,14 +64,67 @@ check(ClientInfo = #{username := Username, password := Password}, AuthResult,
             {stop, AuthResult#{auth_result => ResultCode, anonymous => false}}
     end.
 
-lookup_user(Username, #{username_attr := UidAttr,
-                        match_objectclass := ObjectClass,
-                        device_dn := DeviceDn}) ->
-    Filter = eldap2:equalityMatch("objectClass", ObjectClass),
-    case search(lists:concat([UidAttr,"=", binary_to_list(Username), ",", DeviceDn]), Filter) of
-        {error, noSuchObject} ->
+lookup_user(Username, Password, #{username_attr := UidAttr,
+                                  match_objectclass := ObjectClass,
+                                  device_dn := DeviceDn,
+                                  bind_as_user := BindAsUserRequired,
+                                  custom_base_dn := CustomBaseDN} = Config) ->
+
+    Filters = maps:get(filters, Config, []),
+
+    ReplaceRules = [{"${username_attr}", UidAttr},
+                    {"${user}", binary_to_list(Username)},
+                    {"${device_dn}", DeviceDn}],
+    PasswordString = binary_to_list(Password),
+
+    %% Here the original filter could be appended to the list of filters, like
+    %% ["and",{"objectClass", ObjectClass}]
+    %% ==> "|(&((objectClass=Class)(uiAttr=someAttr))(someKey=someValue))"
+
+    SubFilters =
+        lists:map(fun({K, V}) ->
+                          {replace_vars(K, ReplaceRules), replace_vars(V, ReplaceRules)};
+                     (Op) ->
+                          Op
+                  end, Filters),
+
+    Filter =
+        case SubFilters of
+            [] -> eldap2:equalityMatch("objectClass", ObjectClass);
+            _List -> compile_filters(SubFilters, [])
+        end,
+
+    %% auth.ldap.custom_base_dn = "${username_attr}=${user},${device_dn}"
+    BaseDN = replace_vars(CustomBaseDN, ReplaceRules),
+
+    case {search(BaseDN, Filter), BindAsUserRequired} of
+        {{error, noSuchObject}, _} ->
             undefined;
-        {ok, #eldap_search_result{entries = [Entry]}} ->
+        {{ok, #eldap_search_result{entries = [Entry]}}, true} ->
+            Attributes = Entry#eldap_entry.attributes,
+            case get_value("isEnabled", Attributes) of
+                undefined ->
+                    case emqx_auth_ldap_cli:post_bind(Entry#eldap_entry.object_name, PasswordString) of
+                        ok ->
+                            Attributes;
+                        {error, Reason} ->
+                            {error, Reason}
+                    end;
+                [Val] ->
+                    case list_to_atom(string:to_lower(Val)) of
+                        true ->
+                            case emqx_auth_ldap_cli:post_bind(Entry#eldap_entry.object_name, PasswordString) of
+                                ok ->
+                                    Attributes;
+                                {error, Reason} ->
+                                    {error, Reason}
+                            end;
+                        false ->
+                            {error, username_disabled}
+                    end
+            end;
+
+        {{ok, #eldap_search_result{entries = [Entry]}}, false} ->
             Attributes = Entry#eldap_entry.attributes,
             case get_value("isEnabled", Attributes) of
                 undefined ->
@@ -133,3 +188,35 @@ do_resolve(HashType, Passhash, Password) ->
 
 description() -> "LDAP Authentication Plugin".
 
+compile_filters([{Key, Value}], []) ->
+    compile_equal(Key, Value);
+compile_filters([{K1, V1}, "and", {K2, V2} | Rest], []) ->
+    compile_filters(
+      Rest,
+      eldap2:'and'(compile_equal(K1, V1),
+                   compile_equal(K2, V2)));
+compile_filters([{K1, V1}, "or", {K2, V2} | Rest], []) ->
+    compile_filters(
+      Rest,
+      eldap2:'or'(compile_equal(K1, V1),
+                  compile_equal(K2, V2)));
+compile_filters(["and", {K, V} | Rest], PartialFilter) ->
+    compile_filters(
+      Rest,
+      eldap2:'and'(PartialFilter,
+                   compile_equal(K, V)));
+compile_filters(["or", {K, V} | Rest], PartialFilter) ->
+    compile_filters(
+      Rest,
+      eldap2:'or'(PartialFilter,
+                  compile_equal(K, V)));
+compile_filters([], Filter) ->
+    Filter.
+
+compile_equal(Key, Value) ->
+    eldap2:equalityMatch(Key, Value).
+
+replace_vars(CustomBaseDN, ReplaceRules) ->
+    lists:foldl(fun({Pattern, Substitute}, DN) ->
+                        lists:flatten(string:replace(DN, Pattern, Substitute))
+                end, CustomBaseDN, ReplaceRules).

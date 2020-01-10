@@ -28,6 +28,7 @@
 
 -export([ search/2
         , search/3
+        , post_bind/2
         , init_args/1
         ]).
 
@@ -54,6 +55,7 @@ connect(Opts) ->
                            [{port, Port}, {timeout, Timeout}]
                    end,
     ?LOG(debug, "[LDAP] Connecting to OpenLDAP server: ~p, Opts:~p ...", [Servers, LdapOpts]),
+
     case eldap2:open(Servers, LdapOpts) of
         {ok, LDAP} ->
             try eldap2:simple_bind(LDAP, BindDn, BindPassword) of
@@ -68,19 +70,69 @@ connect(Opts) ->
     end.
 
 search(Base, Filter) ->
-    ecpool:with_client(?APP, fun(C) ->
-                                 eldap2:search(C, [{base, Base},
-                                                   {filter, Filter},
-                                                   {deref, eldap2:derefFindingBaseObj()}])
-                             end).
+    ecpool:with_client(?APP,
+        fun(C) ->
+                case application:get_env(?APP, bind_as_user) of
+                    {ok, true} ->
+                        {ok, Opts} = application:get_env(?APP, ldap),
+                        BindDn       = get_value(bind_dn, Opts),
+                        BindPassword = get_value(bind_password, Opts),
+                        try eldap2:simple_bind(C, BindDn, BindPassword) of
+                            ok ->
+                                eldap2:search(C, [{base, Base},
+                                                  {filter, Filter},
+                                                  {deref, eldap2:derefFindingBaseObj()}]);
+                            {error, Error} ->
+                                {error, Error}
+                        catch
+                            error:Reason -> {error, Reason}
+                        end;
+                    {ok, false} ->
+                        eldap2:search(C, [{base, Base},
+                                          {filter, Filter},
+                                          {deref, eldap2:derefFindingBaseObj()}])
+                end
+        end).
 
 search(Base, Filter, Attributes) ->
-    ecpool:with_client(?APP, fun(C) ->
-                                 eldap2:search(C, [{base, Base},
-                                                   {filter, Filter},
-                                                   {attributes, Attributes},
-                                                   {deref, eldap2:derefFindingBaseObj()}])
-                             end).
+    ecpool:with_client(?APP,
+        fun(C) ->
+                case application:get_env(?APP, bind_as_user) of
+                    {ok, true} ->
+                        {ok, Opts} = application:get_env(?APP, ldap),
+                        BindDn       = get_value(bind_dn, Opts),
+                        BindPassword = get_value(bind_password, Opts),
+                        try eldap2:simple_bind(C, BindDn, BindPassword) of
+                            ok ->
+                                eldap2:search(C, [{base, Base},
+                                                  {filter, Filter},
+                                                  {attributes, Attributes},
+                                                  {deref, eldap2:derefFindingBaseObj()}]);
+                            {error, Error} ->
+                                {error, Error}
+                        catch
+                            error:Reason -> {error, Reason}
+                        end;
+                    {ok, false} ->
+                        eldap2:search(C, [{base, Base},
+                                          {filter, Filter},
+                                          {attributes, Attributes},
+                                          {deref, eldap2:derefFindingBaseObj()}])
+                end
+        end).
+
+post_bind(BindDn, BindPassword) ->
+    ecpool:with_client(?APP,
+                       fun(C) ->
+                               try eldap2:simple_bind(C, BindDn, BindPassword) of
+                                   ok -> ok;
+                                   {error, Error} ->
+                                       {error, Error}
+                               catch
+                                   error:Reason -> {error, Reason}
+                               end
+                       end).
+
 
 init_args(ENVS) ->
     DeviceDn = get_value(device_dn, ENVS),
