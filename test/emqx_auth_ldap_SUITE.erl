@@ -17,7 +17,7 @@
 -module(emqx_auth_ldap_SUITE).
 
 -compile(export_all).
--compile(no_warning_export).
+-compile(nowarn_export_all).
 
 -include_lib("emqx/include/emqx.hrl").
 -include_lib("eunit/include/eunit.hrl").

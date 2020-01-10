@@ -76,7 +76,7 @@ Launch slapd
 ```
 
 Test
--------
+-----
 After configure slapd correctly and launch slapd successfully.
 You could execute
 
