@@ -144,7 +144,7 @@ end}.
 ]}.
 
 {mapping, "auth.ldap.filters.filters.$num.op", "emqx_auth_ldap.filters", [
-    {datatype, string}
+    {datatype, {enum, [ "or", "and" ] } }
 ]}.
 
 
