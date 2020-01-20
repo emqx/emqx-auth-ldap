@@ -98,7 +98,14 @@ lookup_user(Username, Password, #{username_attr := UidAttr,
     BaseDN = replace_vars(CustomBaseDN, ReplaceRules),
 
     case {search(BaseDN, Filter), BindAsUserRequired} of
+        %% This clause seems to be impossible to match. `eldap2:search/2` does
+        %% not validates the result, so if it returns "successfully" from the
+        %% LDAP server, it always returns `{ok, #eldap_search_result{}}`.
         {{error, noSuchObject}, _} ->
+            undefined;
+        %% In case no user was found by the search, but the search was completed
+        %% without error we get an empty `entries` list.
+        {{ok, #eldap_search_result{entries = []}}, _} ->
             undefined;
         {{ok, #eldap_search_result{entries = [Entry]}}, true} ->
             Attributes = Entry#eldap_entry.attributes,
@@ -193,23 +200,23 @@ compile_filters([{Key, Value}], []) ->
 compile_filters([{K1, V1}, "and", {K2, V2} | Rest], []) ->
     compile_filters(
       Rest,
-      eldap2:'and'(compile_equal(K1, V1),
-                   compile_equal(K2, V2)));
+      eldap2:'and'([compile_equal(K1, V1),
+                    compile_equal(K2, V2)]));
 compile_filters([{K1, V1}, "or", {K2, V2} | Rest], []) ->
     compile_filters(
       Rest,
-      eldap2:'or'(compile_equal(K1, V1),
-                  compile_equal(K2, V2)));
+      eldap2:'or'([compile_equal(K1, V1),
+                   compile_equal(K2, V2)]));
 compile_filters(["and", {K, V} | Rest], PartialFilter) ->
     compile_filters(
       Rest,
-      eldap2:'and'(PartialFilter,
-                   compile_equal(K, V)));
+      eldap2:'and'([PartialFilter,
+                    compile_equal(K, V)]));
 compile_filters(["or", {K, V} | Rest], PartialFilter) ->
     compile_filters(
       Rest,
-      eldap2:'or'(PartialFilter,
-                  compile_equal(K, V)));
+      eldap2:'or'([PartialFilter,
+                   compile_equal(K, V)]));
 compile_filters([], Filter) ->
     Filter.
 
