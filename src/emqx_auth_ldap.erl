@@ -29,8 +29,8 @@
 -export([ register_metrics/0
         , check/3
         , description/0
+        , prepare_filter/4
         , replace_vars/2
-        , compile_filters/2
         ]).
 
 -spec(register_metrics() -> ok).
@@ -69,30 +69,15 @@ lookup_user(Username, Password, #{username_attr := UidAttr,
                                   device_dn := DeviceDn,
                                   bind_as_user := BindAsUserRequired,
                                   custom_base_dn := CustomBaseDN} = Config) ->
+    PasswordString = binary_to_list(Password),
 
     Filters = maps:get(filters, Config, []),
 
     ReplaceRules = [{"${username_attr}", UidAttr},
                     {"${user}", binary_to_list(Username)},
                     {"${device_dn}", DeviceDn}],
-    PasswordString = binary_to_list(Password),
 
-    %% Here the original filter could be appended to the list of filters, like
-    %% ["and",{"objectClass", ObjectClass}]
-    %% ==> "|(&((objectClass=Class)(uiAttr=someAttr))(someKey=someValue))"
-
-    SubFilters =
-        lists:map(fun({K, V}) ->
-                          {replace_vars(K, ReplaceRules), replace_vars(V, ReplaceRules)};
-                     (Op) ->
-                          Op
-                  end, Filters),
-
-    Filter =
-        case SubFilters of
-            [] -> eldap2:equalityMatch("objectClass", ObjectClass);
-            _List -> compile_filters(SubFilters, [])
-        end,
+    Filter = prepare_filter(Filters, UidAttr, ObjectClass, ReplaceRules),
 
     %% auth.ldap.custom_base_dn = "${username_attr}=${user},${device_dn}"
     BaseDN = replace_vars(CustomBaseDN, ReplaceRules),
@@ -111,21 +96,11 @@ lookup_user(Username, Password, #{username_attr := UidAttr,
             Attributes = Entry#eldap_entry.attributes,
             case get_value("isEnabled", Attributes) of
                 undefined ->
-                    case emqx_auth_ldap_cli:post_bind(Entry#eldap_entry.object_name, PasswordString) of
-                        ok ->
-                            Attributes;
-                        {error, Reason} ->
-                            {error, Reason}
-                    end;
+                    do_post_bind(Entry#eldap_entry.object_name, PasswordString, Attributes);
                 [Val] ->
                     case list_to_atom(string:to_lower(Val)) of
                         true ->
-                            case emqx_auth_ldap_cli:post_bind(Entry#eldap_entry.object_name, PasswordString) of
-                                ok ->
-                                    Attributes;
-                                {error, Reason} ->
-                                    {error, Reason}
-                            end;
+                            do_post_bind(Entry#eldap_entry.object_name, PasswordString, Attributes);
                         false ->
                             {error, username_disabled}
                     end
@@ -146,6 +121,15 @@ lookup_user(Username, Password, #{username_attr := UidAttr,
             ?LOG(error, "[LDAP] Search dn: ~p, filter: ~p, fail:~p", [DeviceDn, Filter, Error]),
             {error, username_or_password_error}
     end.
+
+do_post_bind(ObjectName, PasswordString, Attributes) ->
+    case emqx_auth_ldap_cli:post_bind(ObjectName, PasswordString) of
+        ok ->
+            Attributes;
+        {error, Reason} ->
+            {error, Reason}
+    end.
+
 
 check_pass(Password, Password, _ClientInfo) -> ok;
 check_pass(_, _, _) -> {error, bad_username_or_password}.
@@ -194,6 +178,19 @@ do_resolve(HashType, Passhash, Password) ->
     {list_to_binary(Passhash), Password1}.
 
 description() -> "LDAP Authentication Plugin".
+
+prepare_filter(Filters, UidAttr, ObjectClass, ReplaceRules) ->
+    SubFilters =
+        lists:map(fun({K, V}) ->
+                          {replace_vars(K, ReplaceRules), replace_vars(V, ReplaceRules)};
+                     (Op) ->
+                          Op
+                  end, Filters),
+    case SubFilters of
+        [] -> eldap2:equalityMatch("objectClass", ObjectClass);
+        _List -> compile_filters(SubFilters, [])
+    end.
+
 
 compile_filters([{Key, Value}], []) ->
     compile_equal(Key, Value);
