@@ -38,20 +38,29 @@ register_metrics() ->
     lists:foreach(fun emqx_metrics:new/1, ?AUTH_METRICS).
 
 check(ClientInfo = #{username := Username, password := Password}, AuthResult,
-      State = #{password_attr := PasswdAttr}) ->
-    CheckResult = case lookup_user(Username, Password, State) of
-                      undefined -> {error, not_found};
-                      {error, Error} -> {error, Error};
-                      Attributes ->
-                          case get_value(PasswdAttr, Attributes) of
-                              undefined ->
-                                  logger:error("LDAP Search State: ~p, uid: ~p, result:~p",
-                                               [State, Username, Attributes]),
-                                  {error, not_found};
-                              [Passhash1] ->
-                                  format_password(Passhash1, Password, ClientInfo)
-                          end
-                  end,
+      State = #{password_attr := PasswdAttr, bind_as_user := BindAsUserRequired}) ->
+    CheckResult =
+        case lookup_user(Username, State) of
+            undefined -> {error, not_found};
+            {error, Error} -> {error, Error};
+            Entry ->
+                PasswordString = binary_to_list(Password),
+                ObjectName = Entry#eldap_entry.object_name,
+                Attributes = Entry#eldap_entry.attributes,
+                case BindAsUserRequired of
+                    true ->
+                        emqx_auth_ldap_cli:post_bind(ObjectName, PasswordString);
+                    false ->
+                        case get_value(PasswdAttr, Attributes) of
+                            undefined ->
+                                logger:error("LDAP Search State: ~p, uid: ~p, result:~p",
+                                             [State, Username, Attributes]),
+                                {error, not_found};
+                            [Passhash1] ->
+                                format_password(Passhash1, Password, ClientInfo)
+                        end
+                end
+        end,
     case CheckResult of
         ok ->
             ok = emqx_metrics:inc(?AUTH_METRICS(success)),
@@ -64,12 +73,10 @@ check(ClientInfo = #{username := Username, password := Password}, AuthResult,
             {stop, AuthResult#{auth_result => ResultCode, anonymous => false}}
     end.
 
-lookup_user(Username, Password, #{username_attr := UidAttr,
-                                  match_objectclass := ObjectClass,
-                                  device_dn := DeviceDn,
-                                  bind_as_user := BindAsUserRequired,
-                                  custom_base_dn := CustomBaseDN} = Config) ->
-    PasswordString = binary_to_list(Password),
+lookup_user(Username, #{username_attr := UidAttr,
+                        match_objectclass := ObjectClass,
+                        device_dn := DeviceDn,
+                        custom_base_dn := CustomBaseDN} = Config) ->
 
     Filters = maps:get(filters, Config, []),
 
@@ -82,38 +89,24 @@ lookup_user(Username, Password, #{username_attr := UidAttr,
     %% auth.ldap.custom_base_dn = "${username_attr}=${user},${device_dn}"
     BaseDN = replace_vars(CustomBaseDN, ReplaceRules),
 
-    case {search(BaseDN, Filter), BindAsUserRequired} of
+    case search(BaseDN, Filter) of
         %% This clause seems to be impossible to match. `eldap2:search/2` does
         %% not validates the result, so if it returns "successfully" from the
         %% LDAP server, it always returns `{ok, #eldap_search_result{}}`.
-        {{error, noSuchObject}, _} ->
+        {error, noSuchObject} ->
             undefined;
         %% In case no user was found by the search, but the search was completed
         %% without error we get an empty `entries` list.
-        {{ok, #eldap_search_result{entries = []}}, _} ->
+        {ok, #eldap_search_result{entries = []}} ->
             undefined;
-        {{ok, #eldap_search_result{entries = [Entry]}}, true} ->
+        {ok, #eldap_search_result{entries = [Entry]}} ->
             Attributes = Entry#eldap_entry.attributes,
             case get_value("isEnabled", Attributes) of
                 undefined ->
-                    do_post_bind(Entry#eldap_entry.object_name, PasswordString, Attributes);
+                    Entry;
                 [Val] ->
                     case list_to_atom(string:to_lower(Val)) of
-                        true ->
-                            do_post_bind(Entry#eldap_entry.object_name, PasswordString, Attributes);
-                        false ->
-                            {error, username_disabled}
-                    end
-            end;
-
-        {{ok, #eldap_search_result{entries = [Entry]}}, false} ->
-            Attributes = Entry#eldap_entry.attributes,
-            case get_value("isEnabled", Attributes) of
-                undefined ->
-                    Attributes;
-                [Val] ->
-                    case list_to_atom(string:to_lower(Val)) of
-                        true -> Attributes;
+                        true -> Entry;
                         false -> {error, username_disabled}
                     end
             end;
@@ -121,15 +114,6 @@ lookup_user(Username, Password, #{username_attr := UidAttr,
             ?LOG(error, "[LDAP] Search dn: ~p, filter: ~p, fail:~p", [DeviceDn, Filter, Error]),
             {error, username_or_password_error}
     end.
-
-do_post_bind(ObjectName, PasswordString, Attributes) ->
-    case emqx_auth_ldap_cli:post_bind(ObjectName, PasswordString) of
-        ok ->
-            Attributes;
-        {error, Reason} ->
-            {error, Reason}
-    end.
-
 
 check_pass(Password, Password, _ClientInfo) -> ok;
 check_pass(_, _, _) -> {error, bad_username_or_password}.
