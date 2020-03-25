@@ -59,11 +59,13 @@ connect(Opts) ->
             try eldap2:simple_bind(LDAP, BindDn, BindPassword) of
                 ok -> {ok, LDAP};
                 {error, Error} ->
+                    ?LOG(error, "[LDAP] Can't authenticated to OpenLDAP serve: ~p", [Error]),
                     {error, Error}
             catch
                 error:Reason -> {error, Reason}
             end;
         {error, Reason} ->
+            ?LOG(error, "[LDAP] Can't connect to OpenLDAP serve: ~p", [Reason]),
             {error, Reason}
     end.
 
