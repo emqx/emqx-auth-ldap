@@ -163,7 +163,7 @@ do_resolve(HashType, Passhash, Password) ->
 
 description() -> "LDAP Authentication Plugin".
 
-prepare_filter(Filters, UidAttr, ObjectClass, ReplaceRules) ->
+prepare_filter(Filters, _UidAttr, ObjectClass, ReplaceRules) ->
     SubFilters =
         lists:map(fun({K, V}) ->
                           {replace_vars(K, ReplaceRules), replace_vars(V, ReplaceRules)};

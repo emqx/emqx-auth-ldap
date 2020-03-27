@@ -65,7 +65,7 @@ connect(Opts) ->
                     {error, Error}
             catch
                 error:Reason ->
-                    ?LOG(error, "[LDAP] Can't authenticated to OpenLDAP server: ~p", [Error]),
+                    ?LOG(error, "[LDAP] Can't authenticated to OpenLDAP server: ~p", [Reason]),
                     {error, Reason}
             end;
         {error, Reason} ->
