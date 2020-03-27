@@ -29,6 +29,8 @@
 -export([ register_metrics/0
         , check/3
         , description/0
+        , prepare_filter/4
+        , replace_vars/2
         ]).
 
 -spec(register_metrics() -> ok).
@@ -36,20 +38,29 @@ register_metrics() ->
     lists:foreach(fun emqx_metrics:new/1, ?AUTH_METRICS).
 
 check(ClientInfo = #{username := Username, password := Password}, AuthResult,
-      State = #{password_attr := PasswdAttr}) ->
-    CheckResult = case lookup_user(Username, State) of
-                      undefined -> {error, not_found};
-                      {error, Error} -> {error, Error};
-                      Attributes ->
-                          case get_value(PasswdAttr, Attributes) of
-                              undefined ->
-                                  logger:error("LDAP Search State: ~p, uid: ~p, result:~p",
-                                               [State, Username, Attributes]),
-                                  {error, not_found};
-                              [Passhash1] ->
-                                  format_password(Passhash1, Password, ClientInfo)
-                          end
-                  end,
+      State = #{password_attr := PasswdAttr, bind_as_user := BindAsUserRequired}) ->
+    CheckResult =
+        case lookup_user(Username, State) of
+            undefined -> {error, not_found};
+            {error, Error} -> {error, Error};
+            Entry ->
+                PasswordString = binary_to_list(Password),
+                ObjectName = Entry#eldap_entry.object_name,
+                Attributes = Entry#eldap_entry.attributes,
+                case BindAsUserRequired of
+                    true ->
+                        emqx_auth_ldap_cli:post_bind(ObjectName, PasswordString);
+                    false ->
+                        case get_value(PasswdAttr, Attributes) of
+                            undefined ->
+                                logger:error("LDAP Search State: ~p, uid: ~p, result:~p",
+                                             [State, Username, Attributes]),
+                                {error, not_found};
+                            [Passhash1] ->
+                                format_password(Passhash1, Password, ClientInfo)
+                        end
+                end
+        end,
     case CheckResult of
         ok ->
             ok = emqx_metrics:inc(?AUTH_METRICS(success)),
@@ -64,19 +75,38 @@ check(ClientInfo = #{username := Username, password := Password}, AuthResult,
 
 lookup_user(Username, #{username_attr := UidAttr,
                         match_objectclass := ObjectClass,
-                        device_dn := DeviceDn}) ->
-    Filter = eldap2:equalityMatch("objectClass", ObjectClass),
-    case search(lists:concat([UidAttr,"=", binary_to_list(Username), ",", DeviceDn]), Filter) of
+                        device_dn := DeviceDn,
+                        custom_base_dn := CustomBaseDN} = Config) ->
+
+    Filters = maps:get(filters, Config, []),
+
+    ReplaceRules = [{"${username_attr}", UidAttr},
+                    {"${user}", binary_to_list(Username)},
+                    {"${device_dn}", DeviceDn}],
+
+    Filter = prepare_filter(Filters, UidAttr, ObjectClass, ReplaceRules),
+
+    %% auth.ldap.custom_base_dn = "${username_attr}=${user},${device_dn}"
+    BaseDN = replace_vars(CustomBaseDN, ReplaceRules),
+
+    case search(BaseDN, Filter) of
+        %% This clause seems to be impossible to match. `eldap2:search/2` does
+        %% not validates the result, so if it returns "successfully" from the
+        %% LDAP server, it always returns `{ok, #eldap_search_result{}}`.
         {error, noSuchObject} ->
+            undefined;
+        %% In case no user was found by the search, but the search was completed
+        %% without error we get an empty `entries` list.
+        {ok, #eldap_search_result{entries = []}} ->
             undefined;
         {ok, #eldap_search_result{entries = [Entry]}} ->
             Attributes = Entry#eldap_entry.attributes,
             case get_value("isEnabled", Attributes) of
                 undefined ->
-                    Attributes;
+                    Entry;
                 [Val] ->
                     case list_to_atom(string:to_lower(Val)) of
-                        true -> Attributes;
+                        true -> Entry;
                         false -> {error, username_disabled}
                     end
             end;
@@ -133,3 +163,48 @@ do_resolve(HashType, Passhash, Password) ->
 
 description() -> "LDAP Authentication Plugin".
 
+prepare_filter(Filters, UidAttr, ObjectClass, ReplaceRules) ->
+    SubFilters =
+        lists:map(fun({K, V}) ->
+                          {replace_vars(K, ReplaceRules), replace_vars(V, ReplaceRules)};
+                     (Op) ->
+                          Op
+                  end, Filters),
+    case SubFilters of
+        [] -> eldap2:equalityMatch("objectClass", ObjectClass);
+        _List -> compile_filters(SubFilters, [])
+    end.
+
+
+compile_filters([{Key, Value}], []) ->
+    compile_equal(Key, Value);
+compile_filters([{K1, V1}, "and", {K2, V2} | Rest], []) ->
+    compile_filters(
+      Rest,
+      eldap2:'and'([compile_equal(K1, V1),
+                    compile_equal(K2, V2)]));
+compile_filters([{K1, V1}, "or", {K2, V2} | Rest], []) ->
+    compile_filters(
+      Rest,
+      eldap2:'or'([compile_equal(K1, V1),
+                   compile_equal(K2, V2)]));
+compile_filters(["and", {K, V} | Rest], PartialFilter) ->
+    compile_filters(
+      Rest,
+      eldap2:'and'([PartialFilter,
+                    compile_equal(K, V)]));
+compile_filters(["or", {K, V} | Rest], PartialFilter) ->
+    compile_filters(
+      Rest,
+      eldap2:'or'([PartialFilter,
+                   compile_equal(K, V)]));
+compile_filters([], Filter) ->
+    Filter.
+
+compile_equal(Key, Value) ->
+    eldap2:equalityMatch(Key, Value).
+
+replace_vars(CustomBaseDN, ReplaceRules) ->
+    lists:foldl(fun({Pattern, Substitute}, DN) ->
+                        lists:flatten(string:replace(DN, Pattern, Substitute))
+                end, CustomBaseDN, ReplaceRules).

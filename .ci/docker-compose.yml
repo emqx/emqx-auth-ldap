@@ -15,6 +15,9 @@ services:
     build: ./emqx-ldap
     image: emqx-ldap:1.0
     restart: always
+    ports:
+      - 389:389
+      - 636:636
     networks:
       - emqx-bridge
 

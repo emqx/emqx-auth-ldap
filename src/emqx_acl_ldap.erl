@@ -49,8 +49,17 @@ do_check_acl(#{username := <<$$, _/binary>>}, _PubSub, _Topic, _NoMatchAction, _
 do_check_acl(#{username := Username}, PubSub, Topic, _NoMatchAction,
              #{device_dn         := DeviceDn,
                match_objectclass := ObjectClass,
-               username_attr     := UidAttr}) ->
-    Filter = eldap2:equalityMatch("objectClass", ObjectClass),
+               username_attr     := UidAttr,
+               custom_base_dn    := CustomBaseDN} = Config) ->
+
+    Filters = maps:get(filters, Config, []),
+
+    ReplaceRules = [{"${username_attr}", UidAttr},
+                    {"${user}", binary_to_list(Username)},
+                    {"${device_dn}", DeviceDn}],
+
+    Filter = emqx_auth_ldap:prepare_filter(Filters, UidAttr, ObjectClass, ReplaceRules),
+
     Attribute = case PubSub of
                     publish   -> "mqttPublishTopic";
                     subscribe -> "mqttSubscriptionTopic"
@@ -58,7 +67,9 @@ do_check_acl(#{username := Username}, PubSub, Topic, _NoMatchAction,
     Attribute1 = "mqttPubSubTopic",
     ?LOG(debug, "[LDAP] search dn:~p filter:~p, attribute:~p",
          [DeviceDn, Filter, Attribute]),
-    BaseDN = lists:concat([UidAttr, "=", binary_to_list(Username), ",", DeviceDn]),
+
+    BaseDN = emqx_auth_ldap:replace_vars(CustomBaseDN, ReplaceRules),
+
     case search(BaseDN, Filter, [Attribute, Attribute1]) of
         {error, noSuchObject} ->
             ok;
