@@ -32,6 +32,7 @@ objectClass: mqttDevice
 objectClass: mqttSecurity
 uid: mqttuser0001
 isEnabled: TRUE
+mqttAccountName: user1
 mqttPublishTopic: mqttuser0001/pub/1
 mqttPublishTopic: mqttuser0001/pub/+
 mqttPublishTopic: mqttuser0001/pub/#
@@ -54,6 +55,7 @@ objectClass: mqttDevice
 objectClass: mqttSecurity
 uid: mqttuser0002
 isEnabled: TRUE
+mqttAccountName: user2
 mqttPublishTopic: mqttuser0002/pub/1
 mqttPublishTopic: mqttuser0002/pub/+
 mqttPublishTopic: mqttuser0002/pub/#
