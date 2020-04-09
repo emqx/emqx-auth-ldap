@@ -24,7 +24,6 @@
 
 -export([ register_metrics/0
         , check_acl/5
-        , reload_acl/1
         , description/0
         ]).
 
@@ -92,9 +91,6 @@ match(Topic, [Filter | Topics]) ->
         true  -> {stop, allow};
         false -> match(Topic, Topics)
     end.
-
-reload_acl(_State) ->
-    ok.
 
 description() ->
     "ACL with LDAP".
