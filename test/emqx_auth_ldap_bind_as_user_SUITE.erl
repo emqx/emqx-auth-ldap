@@ -62,6 +62,7 @@ check_auth(_) ->
     ?assertEqual({error, not_authorized}, emqx_access_control:authenticate(NonExistUser1)).
 
 check_acl(_) ->
+    % emqx_modules:load_module(emqx_mod_acl_internal, false),
     MqttUser = #{clientid => <<"mqttuser1">>, username => <<"user1">>, zone => external},
     NoMqttUser = #{clientid => <<"mqttuser2">>, username => <<"user7">>, zone => external},
     allow = emqx_access_control:check_acl(MqttUser, publish, <<"mqttuser0001/pub/1">>),
