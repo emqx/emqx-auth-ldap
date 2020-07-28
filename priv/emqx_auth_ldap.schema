@@ -62,7 +62,8 @@
 ]}.
 
 {translation, "emqx_auth_ldap.ldap", fun(Conf) ->
-    Servers = string:tokens(cuttlefish:conf_get("auth.ldap.servers", Conf), ","),
+    A2N = fun(A) -> case inet:parse_address(A) of {ok, N} -> N; _ -> A end end,
+    Servers = [A2N(A) || A <- string:tokens(cuttlefish:conf_get("auth.ldap.servers", Conf), ",")],
     Port = cuttlefish:conf_get("auth.ldap.port", Conf),
     Pool = cuttlefish:conf_get("auth.ldap.pool", Conf),
     BindDN = cuttlefish:conf_get("auth.ldap.bind_dn", Conf),
