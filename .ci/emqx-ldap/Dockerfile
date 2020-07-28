@@ -12,11 +12,15 @@ RUN wget ftp://ftp.openldap.org/pub/OpenLDAP/openldap-release/openldap-${VERSION
 COPY ./slapd.conf /usr/local/etc/openldap/slapd.conf
 COPY ./emqx.io.ldif /usr/local/etc/openldap/schema/emqx.io.ldif
 COPY ./emqx.schema /usr/local/etc/openldap/schema/emqx.schema
+COPY ./*.pem /usr/local/etc/openldap/
 
 RUN mkdir -p /usr/local/etc/openldap/data \
     && slapadd -l /usr/local/etc/openldap/schema/emqx.io.ldif -f /usr/local/etc/openldap/slapd.conf
 
-WORKDIR /usr/local/etc/
-EXPOSE 389
+WORKDIR /usr/local/etc/openldap
 
-CMD [ "/usr/local/libexec/slapd", "-d", "3" ]
+EXPOSE 389 636
+
+ENTRYPOINT ["/usr/local/libexec/slapd", "-h", "ldap:/// ldaps:///", "-d", "3"]
+
+CMD ["-f", "/usr/local/etc/openldap/slapd.conf"]

@@ -47,7 +47,7 @@ connect(Opts) ->
     Timeout      = get_value(timeout, Opts, 30),
     BindDn       = get_value(bind_dn, Opts),
     BindPassword = get_value(bind_password, Opts),
-    LdapOpts     = case get_value(ssl, Opts, false) of
+    LdapOpts     = case get_value(ssl, Opts, false)of
                        true ->
                            SslOpts = get_value(sslopts, Opts),
                            [{port, Port}, {timeout, Timeout}, {sslopts, SslOpts}];
