@@ -31,19 +31,31 @@
 
 -define(AuthDN, "ou=test_auth,dc=emqx,dc=io").
 
+%%--------------------------------------------------------------------
+%% Setups
+%%--------------------------------------------------------------------
+
 all() ->
-    [check_auth,
-     check_acl].
+    [{group, nossl}, {group, ssl}].
 
-init_per_suite(Config) ->
-    emqx_ct_helpers:start_apps([emqx, emqx_auth_ldap], fun set_special_configs/1),
+groups() ->
+    Cases = emqx_ct:all(?MODULE),
+    [{nossl, Cases}, {ssl, Cases}].
+
+init_per_group(GrpName, Cfg) ->
+    Fun = fun(App) -> set_special_configs(GrpName, App) end,
+    emqx_ct_helpers:start_apps([emqx_auth_ldap], Fun),
     emqx_mod_acl_internal:unload([]),
-    Config.
+    Cfg.
 
-end_per_suite(_Config) ->
-    emqx_ct_helpers:stop_apps([emqx_auth_ldap, emqx]).
+end_per_group(_GrpName, _Cfg) ->
+    emqx_ct_helpers:stop_apps([emqx_auth_ldap]).
 
-check_auth(_) ->
+%%--------------------------------------------------------------------
+%% Cases
+%%--------------------------------------------------------------------
+
+t_check_auth(_) ->
     MqttUser1 = #{clientid => <<"mqttuser1">>,
                   username => <<"mqttuser0001">>,
                   password => <<"mqttuser0001">>,
@@ -81,7 +93,7 @@ check_auth(_) ->
     ?assertEqual({error, not_authorized}, emqx_access_control:authenticate(NonExistUser1)),
     ?assertEqual({error, bad_username_or_password}, emqx_access_control:authenticate(NonExistUser2)).
 
-check_acl(_) ->
+t_check_acl(_) ->
     MqttUser = #{clientid => <<"mqttuser1">>, username => <<"mqttuser0001">>, zone => external},
     NoMqttUser = #{clientid => <<"mqttuser2">>, username => <<"mqttuser0007">>, zone => external},
     allow = emqx_access_control:check_acl(MqttUser, publish, <<"mqttuser0001/pub/1">>),
@@ -104,7 +116,11 @@ check_acl(_) ->
     deny = emqx_access_control:check_acl(MqttUser, subscribe, <<"mqttuser0001/req/+/mqttuser0002">>),
     ok.
 
-set_special_configs(emqx) ->
+%%--------------------------------------------------------------------
+%% Helpers
+%%--------------------------------------------------------------------
+
+set_special_configs(_, emqx) ->
     application:set_env(emqx, allow_anonymous, false),
     application:set_env(emqx, enable_acl_cache, false),
     application:set_env(emqx, acl_nomatch, deny),
@@ -115,9 +131,23 @@ set_special_configs(emqx) ->
     application:set_env(emqx, plugins_loaded_file,
                         emqx_ct_helpers:deps_path(emqx, LoadedPluginPath));
 
-set_special_configs(emqx_auth_ldap) ->
-    application:set_env(emqx_auth_ldap, device_dn, "ou=testdevice, dc=emqx, dc=io");
-
-set_special_configs(_App) ->
-    ok.
+set_special_configs(Ssl, emqx_auth_ldap) ->
+    case Ssl == ssl of
+        true ->
+            LdapOpts = application:get_env(emqx_auth_ldap, ldap, []),
+            Path = emqx_ct_helpers:deps_path(emqx_auth_ldap, "test/certs/"),
+            SslOpts = [{verify, verify_peer},
+                       {fail_if_no_peer_cert, true},
+                       {server_name_indication, disable},
+                       {keyfile, Path ++ "/client-key.pem"},
+                       {certfile, Path ++ "/client-cert.pem"},
+                       {cacertfile, Path ++ "/cacert.pem"}],
+            LdapOpts1 = lists:keystore(ssl, 1, LdapOpts, {ssl, true}),
+            LdapOpts2 = lists:keystore(sslopts, 1, LdapOpts1, {sslopts, SslOpts}),
+            LdapOpts3 = lists:keystore(port, 1, LdapOpts2, {port, 636}),
+            application:set_env(emqx_auth_ldap, ldap, LdapOpts3);
+        _ ->
+            ok
+    end,
+    application:set_env(emqx_auth_ldap, device_dn, "ou=testdevice, dc=emqx, dc=io").
 
