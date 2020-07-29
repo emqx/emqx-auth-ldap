@@ -1,6 +1,6 @@
 FROM buildpack-deps:stretch
 
-ENV VERSION=2.4.47
+ENV VERSION=2.4.50
 
 RUN apt-get update && apt-get install -y groff groff-base
 RUN wget ftp://ftp.openldap.org/pub/OpenLDAP/openldap-release/openldap-${VERSION}.tgz \
@@ -21,6 +21,6 @@ WORKDIR /usr/local/etc/openldap
 
 EXPOSE 389 636
 
-ENTRYPOINT ["/usr/local/libexec/slapd", "-h", "ldap:/// ldaps:///", "-d", "3"]
+ENTRYPOINT ["/usr/local/libexec/slapd", "-h", "ldap:/// ldaps:///", "-d", "3", "-f", "/usr/local/etc/openldap/slapd.conf"]
 
-CMD ["-f", "/usr/local/etc/openldap/slapd.conf"]
+CMD []
