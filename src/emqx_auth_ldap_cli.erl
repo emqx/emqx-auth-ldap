@@ -26,9 +26,9 @@
 %% ecpool callback
 -export([connect/1]).
 
--export([ search/2
-        , search/3
-        , post_bind/2
+-export([ search/3
+        , search/4
+        , post_bind/3
         , init_args/1
         ]).
 
@@ -73,8 +73,8 @@ connect(Opts) ->
             {error, Reason}
     end.
 
-search(Base, Filter) ->
-    ecpool:with_client(?APP,
+search(Pool, Base, Filter) ->
+    ecpool:with_client(Pool,
         fun(C) ->
                 case application:get_env(?APP, bind_as_user) of
                     {ok, true} ->
@@ -98,8 +98,8 @@ search(Base, Filter) ->
                 end
         end).
 
-search(Base, Filter, Attributes) ->
-    ecpool:with_client(?APP,
+search(Pool, Base, Filter, Attributes) ->
+    ecpool:with_client(Pool,
         fun(C) ->
                 case application:get_env(?APP, bind_as_user) of
                     {ok, true} ->
@@ -125,8 +125,8 @@ search(Base, Filter, Attributes) ->
                 end
         end).
 
-post_bind(BindDn, BindPassword) ->
-    ecpool:with_client(?APP,
+post_bind(Pool, BindDn, BindPassword) ->
+    ecpool:with_client(Pool,
                        fun(C) ->
                                try eldap2:simple_bind(C, BindDn, BindPassword) of
                                    ok -> ok;
