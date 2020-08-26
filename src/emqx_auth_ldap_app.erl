@@ -51,12 +51,12 @@ stop(_State) ->
 load_auth_hook(DeviceDn) ->
     ok = emqx_auth_ldap:register_metrics(),
     Params = maps:from_list(DeviceDn),
-    emqx:hook('client.authenticate', fun emqx_auth_ldap:check/3, [Params]).
+    emqx:hook('client.authenticate', fun emqx_auth_ldap:check/3, [Params#{pool => ?APP}]).
 
 load_acl_hook(DeviceDn) ->
     ok = emqx_acl_ldap:register_metrics(),
     Params = maps:from_list(DeviceDn),
-    emqx:hook('client.check_acl', fun emqx_acl_ldap:check_acl/5 , [Params]).
+    emqx:hook('client.check_acl', fun emqx_acl_ldap:check_acl/5 , [Params#{pool => ?APP}]).
 
 if_enabled(Cfgs, Fun) ->
     case get_env(Cfgs) of

@@ -29,7 +29,7 @@
 
 -import(proplists, [get_value/2]).
 
--import(emqx_auth_ldap_cli, [search/3]).
+-import(emqx_auth_ldap_cli, [search/4]).
 
 -spec(register_metrics() -> ok).
 register_metrics() ->
@@ -49,7 +49,8 @@ do_check_acl(#{username := Username}, PubSub, Topic, _NoMatchAction,
              #{device_dn         := DeviceDn,
                match_objectclass := ObjectClass,
                username_attr     := UidAttr,
-               custom_base_dn    := CustomBaseDN} = Config) ->
+               custom_base_dn    := CustomBaseDN,
+               pool := Pool} = Config) ->
 
     Filters = maps:get(filters, Config, []),
 
@@ -69,7 +70,7 @@ do_check_acl(#{username := Username}, PubSub, Topic, _NoMatchAction,
 
     BaseDN = emqx_auth_ldap:replace_vars(CustomBaseDN, ReplaceRules),
 
-    case search(BaseDN, Filter, [Attribute, Attribute1]) of
+    case search(Pool, BaseDN, Filter, [Attribute, Attribute1]) of
         {error, noSuchObject} ->
             ok;
         {ok, #eldap_search_result{entries = []}} ->
