@@ -24,7 +24,7 @@
 
 -import(proplists, [get_value/2]).
 
--import(emqx_auth_ldap_cli, [search/2]).
+-import(emqx_auth_ldap_cli, [search/3]).
 
 -export([ register_metrics/0
         , check/3
@@ -38,7 +38,7 @@ register_metrics() ->
     lists:foreach(fun emqx_metrics:ensure/1, ?AUTH_METRICS).
 
 check(ClientInfo = #{username := Username, password := Password}, AuthResult,
-      State = #{password_attr := PasswdAttr, bind_as_user := BindAsUserRequired}) ->
+      State = #{password_attr := PasswdAttr, bind_as_user := BindAsUserRequired, pool := Pool}) ->
     CheckResult =
         case lookup_user(Username, State) of
             undefined -> {error, not_found};
@@ -49,7 +49,7 @@ check(ClientInfo = #{username := Username, password := Password}, AuthResult,
                 Attributes = Entry#eldap_entry.attributes,
                 case BindAsUserRequired of
                     true ->
-                        emqx_auth_ldap_cli:post_bind(ObjectName, PasswordString);
+                        emqx_auth_ldap_cli:post_bind(Pool, ObjectName, PasswordString);
                     false ->
                         case get_value(PasswdAttr, Attributes) of
                             undefined ->
@@ -76,7 +76,7 @@ check(ClientInfo = #{username := Username, password := Password}, AuthResult,
 lookup_user(Username, #{username_attr := UidAttr,
                         match_objectclass := ObjectClass,
                         device_dn := DeviceDn,
-                        custom_base_dn := CustomBaseDN} = Config) ->
+                        custom_base_dn := CustomBaseDN, pool := Pool} = Config) ->
 
     Filters = maps:get(filters, Config, []),
 
@@ -89,7 +89,7 @@ lookup_user(Username, #{username_attr := UidAttr,
     %% auth.ldap.custom_base_dn = "${username_attr}=${user},${device_dn}"
     BaseDN = replace_vars(CustomBaseDN, ReplaceRules),
 
-    case search(BaseDN, Filter) of
+    case search(Pool, BaseDN, Filter) of
         %% This clause seems to be impossible to match. `eldap2:search/2` does
         %% not validates the result, so if it returns "successfully" from the
         %% LDAP server, it always returns `{ok, #eldap_search_result{}}`.
