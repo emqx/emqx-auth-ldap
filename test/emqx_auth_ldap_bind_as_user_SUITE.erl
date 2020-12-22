@@ -37,7 +37,7 @@ all() ->
 
 init_per_suite(Config) ->
     emqx_ct_helpers:start_apps([emqx, emqx_auth_ldap], fun set_special_configs/1),
-    emqx_mod_acl_internal:unload([]),
+    % emqx_mod_acl_internal:unload([]),
     Config.
 
 end_per_suite(_Config) ->
