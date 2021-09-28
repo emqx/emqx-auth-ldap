@@ -1,0 +1,13 @@
+%% -*-: erlang -*-
+{VSN,
+  [
+    {<<".*">>, [
+      {restart_application, emqx_auth_ldap}
+    ]}
+  ],
+  [
+    {<<".*">>, [
+      {restart_application, emqx_auth_ldap}
+    ]}
+  ]
+}.

@@ -60,8 +60,8 @@ load_acl_hook(DeviceDn) ->
 
 if_enabled(Cfgs, Fun) ->
     case get_env(Cfgs) of
-        {ok, InitArgs} -> Fun(InitArgs);
-        [] -> ok
+        {ok, []} -> ok;
+        {ok, InitArgs} -> Fun(InitArgs)
     end.
 
 get_env(Cfgs) ->
